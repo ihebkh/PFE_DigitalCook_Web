@@ -2,7 +2,7 @@
 // Composant d'analyse de CV (upload PDF, affichage résultats, UX optimisée)
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Box, Typography, Paper, Button, CircularProgress, Grid, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Divider } from '@mui/material';
+import { Box, Typography, Paper, Button, CircularProgress, Grid, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import { FaFilePdf, FaTimes } from 'react-icons/fa';
 import { useTheme } from '../context/themeContext';
 import Header from './Header';
@@ -19,6 +19,7 @@ const CvAnalyse = ({ collapsed }) => {
   const [error, setError] = useState('');
   const { isDarkMode } = useTheme();
   const marginLeft = collapsed ? 90 : 270;
+  const [showAllExperiences, setShowAllExperiences] = useState(false);
 
   // Gestion du drag & drop de fichiers
   const onDrop = useCallback((acceptedFiles) => {
@@ -62,7 +63,7 @@ const CvAnalyse = ({ collapsed }) => {
         marginTop: 64,
         padding: 32,
         transition: 'margin-left 0.2s',
-        width: `calc(100% - ${marginLeft}px)` ,
+        width: `calc(100% - ${marginLeft}px)`,
         minHeight: 'calc(100vh - 64px - 64px)',
         overflow: 'auto',
         background: isDarkMode ? '#1E2B45' : '#fff',
@@ -72,9 +73,9 @@ const CvAnalyse = ({ collapsed }) => {
         {/* Zone de drop et sélection de fichier */}
         <Paper sx={{ p: 3, mb: 3, background: isDarkMode ? '#2A354D' : '#fff', color: isDarkMode ? '#F0F0F0' : '#333' }}>
           <Box
-            {...getRootProps()}
-            sx={{
-              border: '2px dashed',
+            {...getRootProps()} 
+            sx={{ 
+              border: '2px dashed', 
               borderColor: isDragActive ? 'primary.main' : (isDarkMode ? '#404B60' : 'grey.300'),
               borderRadius: 1,
               p: 3,
@@ -120,8 +121,8 @@ const CvAnalyse = ({ collapsed }) => {
                     {selectedFiles[0].name}
                   </Typography>
                 </Box>
-                <IconButton
-                  size="small"
+                <IconButton 
+                  size="small" 
                   color="error"
                   onClick={() => removeFile(0)}
                   sx={{ color: isDarkMode ? '#F0F0F0' : 'error.main' }}
@@ -134,8 +135,8 @@ const CvAnalyse = ({ collapsed }) => {
 
           {/* Bouton d'analyse */}
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: selectedFiles.length > 0 ? 2 : 0 }}>
-            <Button
-              variant="contained"
+            <Button 
+              variant="contained" 
               color="primary"
               onClick={handleUpload}
               disabled={loading || selectedFiles.length === 0}
@@ -170,70 +171,116 @@ const CvAnalyse = ({ collapsed }) => {
             <Typography variant="h5" gutterBottom sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>
               Résultats d'analyse
             </Typography>
-            <Paper sx={{ p: 2, mb: 2, background: isDarkMode ? '#2A354D' : '#fff' }}>
-              {/* Compétences détectées */}
-              <Typography variant="subtitle1" sx={{ mb: 1 }}><b>Compétences détectées</b></Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                {result.competences && result.competences.map((c, i) => (
-                  <Paper key={i} sx={{ p: 0.5, px: 1, m: 0.2, bgcolor: '#e3f2fd', fontSize: 13 }}>{c}</Paper>
-                ))}
-              </Box>
-              <Divider sx={{ my: 2 }} />
+            <Grid container spacing={3} alignItems="stretch" direction="column">
+              {/* Compétences */}
+              <Grid item xs={12} sx={{ display: 'flex' }}>
+                <Paper sx={{ p: 2, background: isDarkMode ? '#2A354D' : '#fff', flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}><b>Compétences détectées</b></Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                    {result.competences && result.competences.map((c, i) => (
+                      <Paper key={i} sx={{ p: 0.5, px: 1, m: 0.2, bgcolor: '#e3f2fd', fontSize: 13 }}>{c}</Paper>
+                    ))}
+                  </Box>
+                </Paper>
+              </Grid>
               {/* Expériences */}
-              <Typography variant="subtitle1" sx={{ mb: 1 }}><b>Expériences</b></Typography>
-              <ul style={{ marginBottom: 16 }}>
-                {result.experiences && result.experiences.map((exp, i) => (
-                  <li key={i}>{exp}</li>
-                ))}
-              </ul>
-              <Divider sx={{ my: 2 }} />
+              <Grid item xs={12} sx={{ display: 'flex' }}>
+                <Paper sx={{ p: 2, background: isDarkMode ? '#2A354D' : '#fff', flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}><b>Expériences</b></Typography>
+                  {result.experiences && (
+                    <>
+                      <ul style={{ marginBottom: 16 }}>
+                        {(showAllExperiences ? result.experiences : result.experiences.slice(0, 3)).map((exp, i) => (
+                          <li key={i}>{exp.replace(/^([*+])\s*/, '')}</li>
+                        ))}
+                      </ul>
+                      {result.experiences.length > 3 && (
+                        <Button
+                          size="small"
+                          onClick={() => setShowAllExperiences(v => !v)}
+                          sx={{ textTransform: 'none', mb: 2 }}
+                        >
+                          {showAllExperiences ? 'Voir moins' : `Voir plus (${result.experiences.length - 3} de plus)`}
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </Paper>
+              </Grid>
               {/* Pays détectés */}
-              <Typography variant="subtitle1" sx={{ mb: 1 }}><b>Pays détectés</b></Typography>
-              <Typography sx={{ mb: 2 }}>{result.pays && result.pays.join(", ")}</Typography>
+              <Grid item xs={12} sx={{ display: 'flex' }}>
+                <Paper sx={{ p: 2, background: isDarkMode ? '#2A354D' : '#fff', flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}><b>Pays détectés</b></Typography>
+                  <Typography sx={{ mb: 2 }}>{result.pays && result.pays.join(", ")}</Typography>
+                </Paper>
+              </Grid>
               {/* Durée d'expérience */}
-              <Typography variant="subtitle1" sx={{ mb: 1 }}><b>Durée d'expérience</b></Typography>
-              <Typography sx={{ mb: 2 }}>{result.duree_experience}</Typography>
-              <Divider sx={{ my: 2 }} />
+              <Grid item xs={12} sx={{ display: 'flex' }}>
+                <Paper sx={{ p: 2, background: isDarkMode ? '#2A354D' : '#fff', flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}><b>Durée d'expérience</b></Typography>
+                  <Typography sx={{ mb: 2 }}>{result.duree_experience}</Typography>
+                </Paper>
+              </Grid>
               {/* Offres correspondantes */}
-              <Typography variant="subtitle1" sx={{ mb: 1 }}><b>Offres correspondantes</b></Typography>
-              {result.matches && result.matches.length > 0 ? (
-                <TableContainer component={Paper} sx={{ mt: 2, background: isDarkMode ? '#22304a' : '#fff' }}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>N°</TableCell>
-                        <TableCell>Titre</TableCell>
-                        <TableCell>Société</TableCell>
-                        <TableCell>Ville</TableCell>
-                        <TableCell>Score</TableCell>
-                        <TableCell>Compétences communes</TableCell>
-                        <TableCell>Langues communes</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {result.matches
-                        .sort((a, b) => b.global_score - a.global_score)
-                        .map((m, i) => {
-                          const offre = m.offre;
-                          return (
-                            <TableRow key={i}>
-                              <TableCell>{i + 1}</TableCell>
-                              <TableCell>{offre.titre}</TableCell>
-                              <TableCell>{offre.societe}</TableCell>
-                              <TableCell>{offre.lieuSociete || offre.ville}</TableCell>
-                              <TableCell>{m.global_score.toFixed(2)}</TableCell>
-                              <TableCell>{m.matching_skills && m.matching_skills.length > 0 ? m.matching_skills.join(", ") : 'Aucune'}</TableCell>
-                              <TableCell>{m.matching_languages && m.matching_languages.length > 0 ? m.matching_languages.join(", ") : 'Aucune'}</TableCell>
-                            </TableRow>
-                          );
-                        })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              ) : (
-                <Typography sx={{ mt: 2 }}>Aucune offre ne correspond au seuil.</Typography>
-              )}
-            </Paper>
+              <Grid item xs={12}>
+                <Paper sx={{ p: 2, background: isDarkMode ? '#2A354D' : '#fff' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}><b>Offres correspondantes</b></Typography>
+                  {result.matches && result.matches.length > 0 ? (
+                    <TableContainer component={Paper} sx={{ mt: 2, background: isDarkMode ? '#22304a' : '#fff' }}>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>N°</TableCell>
+                            <TableCell>Titre</TableCell>
+                            <TableCell>Société</TableCell>
+                            <TableCell>Ville</TableCell>
+                            <TableCell>Score</TableCell>
+                            <TableCell>Compétences communes</TableCell>
+                            <TableCell>Langues communes</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {result.matches
+                            .sort((a, b) => b.global_score - a.global_score)
+                            .map((m, i) => {
+                              const offre = m.offre;
+                              return (
+                                <TableRow key={i}>
+                                  <TableCell>{i + 1}</TableCell>
+                                  <TableCell>{offre.titre}</TableCell>
+                                  <TableCell>{offre.societe}</TableCell>
+                                  <TableCell>{offre.lieuSociete || offre.ville}</TableCell>
+                                  <TableCell>{m.global_score.toFixed(2)}</TableCell>
+                                  <TableCell>
+                                    {m.matching_skills && m.matching_skills.length > 0 ? (
+                                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                        {m.matching_skills.map((skill, idx) => (
+                                          <Paper key={idx} sx={{ px: 1, py: 0.2, bgcolor: '#e3f2fd', fontSize: 13, m: 0 }}>{skill}</Paper>
+                                        ))}
+                                      </Box>
+                                    ) : 'Aucune'}
+                                  </TableCell>
+                                  <TableCell>
+                                    {m.matching_languages && m.matching_languages.length > 0 ? (
+                                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                        {m.matching_languages.map((lang, idx) => (
+                                          <Paper key={idx} sx={{ px: 1, py: 0.2, bgcolor: '#ffe0b2', fontSize: 13, m: 0 }}>{lang}</Paper>
+                                        ))}
+                                      </Box>
+                                    ) : 'Aucune'}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  ) : (
+                    <Typography sx={{ mt: 2 }}>Aucune offre ne correspond au seuil.</Typography>
+                  )}
+                </Paper>
+              </Grid>
+            </Grid>
           </Box>
         )}
       </main>

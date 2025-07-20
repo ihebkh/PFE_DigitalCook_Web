@@ -75,6 +75,7 @@ export async function analyseCv(file) {
   formData.append('file', file);
   try {
     const res = await axios.post(`${api_url}/analyse/analyse-cv`, formData, {
+      withCredentials: true,
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return res.data;

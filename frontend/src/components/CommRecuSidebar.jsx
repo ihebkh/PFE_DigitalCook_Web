@@ -9,12 +9,8 @@ import { useTheme } from '../context/themeContext';
 // Définition des éléments de la sidebar utilisateur
 const userSidebarItems = [
   { label: 'Dashboard', icon: <FaTachometerAlt />, path: '/dashboard' },
-  { label: 'Talentxpo', icon: <FaBriefcase />, path: '/cv-parsing' },
-  { label: 'Activités', icon: <FaClipboardList />, path: '/activities' },
-  { label: 'Affaires', icon: <FaBuilding />, path: '/affaires' },
-  { label: 'Marketplace', icon: <FaStore />, path: '/marketplace' },
-  { label: 'Paramètres', icon: <FaCog />, path: '/settings' },
-  { label: 'Parrainage', icon: <FaHandshake />, path: '/referral' },
+  { label: 'cv ', icon: <FaBriefcase />, path: '/cv-parsing' },
+
 ];
 
 /**

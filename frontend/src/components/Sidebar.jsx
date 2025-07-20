@@ -11,11 +11,6 @@ import { useAuth } from '../context/authContext';
 const sidebarItems = [
   { label: 'Dashboard', icon: <FaTachometerAlt />, path: '/dashboard', roles: ['TopAdmin'] },
   { label: 'Analyse CV', icon: <FaClipboardList />, path: '/analyse-cv', roles: ['TopAdmin'] },
-  { label: 'Activités', icon: <FaClipboardList />, path: '/activities', roles: ['TopAdmin'] },
-  { label: 'Affaires', icon: <FaBuilding />, path: '/affaires', roles: ['TopAdmin'] },
-  { label: 'Marketplace', icon: <FaStore />, path: '/marketplace', roles: ['TopAdmin'] },
-  { label: 'Paramètres', icon: <FaCog />, path: '/settings', roles: ['TopAdmin'] },
-  { label: 'Parrainage', icon: <FaHandshake />, path: '/referral', roles: ['TopAdmin'] },
 ];
 
 /**

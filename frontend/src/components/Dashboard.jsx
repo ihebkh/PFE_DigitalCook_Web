@@ -26,11 +26,11 @@ export default function Dashboard({ collapsed }) {
         background: isDarkMode ? '#1E2B45' : '#fff',
         color: isDarkMode ? '#F0F0F0' : '#333',
       }}>
-        {/* Iframe PowerBI */}
         <iframe 
           title="Dashboard" 
-          style={{ width: '100%', height: '100%' }}
-          src="https://app.powerbi.com/reportEmbed?reportId=65d99be3-92af-4c86-b4b5-24981f6a0508&pageName=ReportSection&autoAuth=true&ctid=604f1a96-cbe8-43f8-abbf-f8eaf5d85730&navContentPaneEnabled=false&filterPaneEnabled=false" 
+          width="1140"
+          height="541.25"
+          src="https://app.powerbi.com/reportEmbed?reportId=0a977f2d-71b6-4439-a950-c17000833f24&autoAuth=true&ctid=604f1a96-cbe8-43f8-abbf-f8eaf5d85730&hideHeader=true&filterPaneEnabled=false&navContentPaneEnabled=false"
           frameBorder="0" 
           allowFullScreen="true"
         ></iframe>

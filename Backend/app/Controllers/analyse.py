@@ -46,26 +46,34 @@ with open(SKILL_DB_PATH, 'r', encoding='utf-8') as f:
     SKILL_DB = json.load(f)
 skill_extractor = SkillExtractor(nlp, SKILL_DB, PhraseMatcher)
 
-# NLP features
 
-def count_verbs(sentence): return len([t for t in nlp(sentence) if t.pos_ == 'VERB'])
-def count_adjectives(sentence): return len([t for t in nlp(sentence) if t.pos_ == 'ADJ'])
-def count_stopwords(sentence): return len([t for t in nlp(sentence) if t.is_stop])
-def count_nouns(sentence): return len([t for t in nlp(sentence) if t.pos_ == 'NOUN'])
-def count_digits(sentence): return len([t for t in nlp(sentence) if t.is_digit])
-def count_special_characters(sentence): return len([t for t in nlp(sentence) if not t.text.isalnum() and not t.is_punct])
-def count_punctuation(sentence): return len([t for t in nlp(sentence) if t.is_punct])
-def calculate_sentence_length(sentence): return len(nlp(sentence))
+# Fonctions de comptage optimisées pour accepter un doc spaCy
+
+def count_verbs(doc): return len([t for t in doc if t.pos_ == 'VERB'])
+def count_adjectives(doc): return len([t for t in doc if t.pos_ == 'ADJ'])
+def count_stopwords(doc): return len([t for t in doc if t.is_stop])
+def count_nouns(doc): return len([t for t in doc if t.pos_ == 'NOUN'])
+def count_digits(doc): return len([t for t in doc if t.is_digit])
+def count_special_characters(doc): return len([t for t in doc if not t.text.isalnum() and not t.is_punct])
+def count_punctuation(doc): return len([t for t in doc if t.is_punct])
+def calculate_sentence_length(doc): return len(doc)
+
+
+def clean_hyphenation(text):
+    return re.sub(r'-\s*\n', '', text)
+
 
 def extract_text_from_pdf(pdf_path):
     images = convert_from_path(pdf_path)
     all_text = ""
     for image in images:
         all_text += pytesseract.image_to_string(image, lang='eng+fra') + "\n"
+    all_text = clean_hyphenation(all_text)
     temp_txt_path = pdf_path.replace('.pdf', '.txt')
     with open(temp_txt_path, 'w', encoding='utf-8') as f:
         f.write(all_text)
     return temp_txt_path
+
 
 def extract_skills(skill_extractor, sentence):
     try:
@@ -135,50 +143,81 @@ def clean_ref(ref):
     match = re.search(r'Ref(\d+)', cleaned_ref, re.IGNORECASE)
     return f"ref{match.group(1)}" if match else "ref not found"
 
-def train_dataset(excel_path):
-    dataset = pd.read_excel(excel_path)
+def train_dataset(*excel_paths):
+    dataframes = [pd.read_excel(path) for path in excel_paths]
+    dataset = pd.concat(dataframes, ignore_index=True)
     dataset = dataset.drop(dataset[(dataset['IsExperience'] == 'YES') & ((dataset['Sentence length'] < 3) | (dataset['Sentence length'] > 28))].index)
     dataset = dataset.drop(dataset[(dataset['IsExperience'] == 'YES') & (dataset['experiences'].str.contains("\\?"))].index)
-    numeric_features = ['Verbs number', 'Adjectives number', 'Stopwords number', 'Sentence length', 'Nouns number', 'Special chars number', 'Punctuation number', 'Digits number', 'Skills number']
+    numeric_features = ['Verbs number', 'Adjectives number', 'Stopwords number', 'Sentence length',
+                        'Nouns number', 'Special chars number', 'Punctuation number', 'Digits number', 'Skills number']
     numeric_transformer = Pipeline([('scaler', StandardScaler()), ('pca', PCA(n_components=2))])
-    categorical_transformer = Pipeline([('imputer', SimpleImputer(strategy='constant', fill_value='missing')), ('onehot', OneHotEncoder(handle_unknown='ignore'))])
+    categorical_transformer = Pipeline([
+        ('imputer', SimpleImputer(strategy='constant', fill_value='missing')),
+        ('onehot', OneHotEncoder(handle_unknown='ignore'))
+    ])
     preprocessor = ColumnTransformer([
         ('num', numeric_transformer, numeric_features),
         ('cat', categorical_transformer, ['experiences'])
     ])
+
     X = dataset.drop('IsExperience', axis=1)
     y = LabelEncoder().fit_transform(dataset['IsExperience'])
+
     X_transformed = preprocessor.fit_transform(X)
+
     classifier = RandomForestClassifier()
     classifier.fit(X_transformed, y)
+
     joblib.dump(classifier, 'random_forest_model.pkl')
     joblib.dump(preprocessor, 'preprocessor.pkl')
+
     return True
 
-def predict(filepath):
+# Chargement unique du modèle et du préprocesseur
+try:
     classifier = joblib.load('random_forest_model.pkl')
     preprocessor = joblib.load('preprocessor.pkl')
+except Exception:
+    classifier = None
+    preprocessor = None
+
+
+def predict(filepath):
+    global classifier, preprocessor
+    if classifier is None or preprocessor is None:
+        raise Exception("Modèle ou préprocesseur non chargé")
     with open(filepath, 'r', encoding='utf-8') as file:
         sentences = file.readlines()
     data_list = []
     for sentence in sentences:
+        doc = nlp(sentence)
         data_list.append(pd.DataFrame({
             'experiences': [sentence],
-            'Verbs number': [count_verbs(sentence)],
-            'Adjectives number': [count_adjectives(sentence)],
-            'Stopwords number': [count_stopwords(sentence)],
-            'Sentence length': [calculate_sentence_length(sentence)],
-            'Nouns number': [count_nouns(sentence)],
-            'Special chars number': [count_special_characters(sentence)],
-            'Punctuation number': [count_punctuation(sentence)],
-            'Digits number': [count_digits(sentence)],
+            'Verbs number': [count_verbs(doc)],
+            'Adjectives number': [count_adjectives(doc)],
+            'Stopwords number': [count_stopwords(doc)],
+            'Sentence length': [calculate_sentence_length(doc)],
+            'Nouns number': [count_nouns(doc)],
+            'Special chars number': [count_special_characters(doc)],
+            'Punctuation number': [count_punctuation(doc)],
+            'Digits number': [count_digits(doc)],
             'Skills number': [count_skills(skill_extractor, sentence)]
         }))
     input_df = pd.concat(data_list, ignore_index=True)
     X_input = preprocessor.transform(input_df)
     predictions = classifier.predict(X_input)
-    predicted_as_experience = input_df[predictions == 1]
-    return [s for s, pred in zip(sentences, predictions) if pred == 1]
+    if hasattr(classifier, "predict_proba"):
+        probas = classifier.predict_proba(X_input)[:, 1]
+    else:
+        probas = [None] * len(predictions)
+    return [
+        {
+            "phrase": s.strip(),
+            "proba": float(p) if p is not None else None,
+            "label": int(l)
+        }
+        for s, p, l in zip(sentences, probas, predictions)
+    ]
 
 def translate_to_french(text_list):
     return [GoogleTranslator(source='auto', target='fr').translate(text) for text in text_list]
@@ -235,8 +274,9 @@ def format_years_months(years_float):
 
 @router.post("/analyse-cv")
 def analyse_cv(file: UploadFile = File(...)):
-    # Chemin fixe pour le dataset d'entraînement
-    EXCEL_PATH = r"C:\Users\khmir\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset_experiences.xlsx"
+    EXCEL_PATH1 = r"C:\Users\khmir\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset_experiences.xlsx"
+    EXCEL_PATH2 = r"C:\Users\khmir\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset_final.xlsx"
+    EXCEL_PATH3 = r"C:\Users\khmir\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset.xlsx"
     MODEL_PATH = 'random_forest_model.pkl'
     PREPROCESSOR_PATH = 'preprocessor.pkl'
     filename = file.filename.lower()
@@ -244,30 +284,33 @@ def analyse_cv(file: UploadFile = File(...)):
         tmp.write(file.file.read())
         tmp_path = tmp.name
     try:
-        # Si le modèle n'existe pas, on l'entraîne automatiquement
         if not (os.path.exists(MODEL_PATH) and os.path.exists(PREPROCESSOR_PATH)):
-            train_dataset(EXCEL_PATH)
-        # Analyse de CV (PDF uniquement)
+            train_dataset(EXCEL_PATH1, EXCEL_PATH2, EXCEL_PATH3)
         if filename.endswith('.pdf'):
             txt_path = extract_text_from_pdf(tmp_path)
             skills = detectSkills(skill_extractor, txt_path)
             try:
-                experiences = predict(txt_path)
+                all_predictions = predict(txt_path)
+                experiences = [item["phrase"] for item in all_predictions if item["label"] == 1]
             except Exception as e:
+                all_predictions = []
                 experiences = []
             duration = calculate_total_years_experience(txt_path)
             countries = detect_address(txt_path)
             cv_langues = ["Français (C1)", "Anglais (B2)"]
+            experiences_original = experiences
             if experiences:
                 experiences_fr = translate_experiences_to_french(experiences)
             else:
                 experiences_fr = []
+            with open(txt_path, 'r', encoding='utf-8') as f:
+                cv_text = f.read()
             _, _, offres_col, _, _ = get_mongo_collections()
             offres = list(offres_col.find({"status": "active"}))
             seuil = 0.28
             matches = []
             if experiences_fr and offres:
-                cv_text = " ".join(experiences_fr)
+                cv_text_for_match = " ".join(experiences_fr)
                 cv_skills = set(s.lower() for s in skills)
                 cv_languages = normalize_langs(cv_langues)
                 has_experience = len(experiences_fr) > 0
@@ -276,7 +319,7 @@ def analyse_cv(file: UploadFile = File(...)):
                     offre_skills = extract_skills_from_offre(offre)
                     offre_languages = extract_languages_from_offre(offre)
                     global_score, text_score, skills_score, langs_score, exp_score = compute_global_score(
-                        cv_text, offre_text, cv_skills, offre_skills, cv_languages, offre_languages, has_experience
+                        cv_text_for_match, offre_text, cv_skills, offre_skills, cv_languages, offre_languages, has_experience
                     )
                     matching_skills = list(cv_skills & offre_skills)
                     matching_languages = list(cv_languages & offre_languages)
@@ -306,9 +349,12 @@ def analyse_cv(file: UploadFile = File(...)):
                 "competences": skills,
                 "duree_experience": format_years_months(duration),
                 "pays": countries,
-                "experiences": experiences_fr,
-                "matches": matches
+                "experiences": experiences_original,
+                "matches": matches,
+                "cv_sentences_scores": all_predictions,
+                "cv_text": cv_text
             }
+            # Suppression de l'enregistrement du résultat dans la base de données MongoDB
             return JSONResponse(content=result)
         else:
             raise HTTPException(status_code=400, detail="Type de fichier non supporté. Envoyez un PDF.")

@@ -6,7 +6,8 @@ import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, 
   TableHead, TableRow, Avatar, CircularProgress, Dialog, 
   DialogActions, DialogContent, DialogTitle, Button, IconButton, TextField,
-  FormControl, InputLabel, Select, MenuItem, DialogContentText
+  FormControl, InputLabel, Select, MenuItem, DialogContentText,
+  Pagination, Stack
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -44,6 +45,10 @@ const UserList = ({ collapsed }) => {
   const [createSuccess, setCreateSuccess] = useState("");
   const [confirmCreateDialogOpen, setConfirmCreateDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
+  
+  // États pour la pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [usersPerPage] = useState(7);
 
   // Chargement initial des utilisateurs et privilèges
   useEffect(() => {
@@ -169,6 +174,32 @@ const UserList = ({ collapsed }) => {
     }
   };
 
+  // Logique de pagination
+  const filteredUsers = users.filter(user => {
+    const q = search.toLowerCase();
+    return (
+      user.name?.toLowerCase().includes(q) ||
+      user.last_name?.toLowerCase().includes(q) ||
+      user.email?.toLowerCase().includes(q)
+    );
+  });
+
+  // Calcul des indices pour la pagination
+  const indexOfLastUser = currentPage * usersPerPage;
+  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+
+  // Gestion du changement de page
+  const handlePageChange = (event, page) => {
+    setCurrentPage(page);
+  };
+
+  // Reset de la page quand la recherche change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
   // Rendu principal
   return (
     <div>
@@ -218,59 +249,89 @@ const UserList = ({ collapsed }) => {
             <CircularProgress />
           </Box>
         ) : (
-          <TableContainer component={Paper} sx={{ background: isDarkMode ? '#2A354D' : '#FFFFFF' }}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={tableCellHeaderStyle}>Photo</TableCell>
-                  <TableCell sx={tableCellHeaderStyle}>Prénom</TableCell>
-                  <TableCell sx={tableCellHeaderStyle}>Nom</TableCell>
-                  <TableCell sx={tableCellHeaderStyle}>Email</TableCell>
-                  <TableCell sx={tableCellHeaderStyle}>Privilège</TableCell>
-                  <TableCell sx={tableCellHeaderStyle}>Statut</TableCell>
-                  <TableCell sx={tableCellHeaderStyle}>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {users.filter(user => {
-                  const q = search.toLowerCase();
-                  return (
-                    user.name?.toLowerCase().includes(q) ||
-                    user.last_name?.toLowerCase().includes(q) ||
-                    user.email?.toLowerCase().includes(q)
-                  );
-                }).map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell sx={tableCellStyle}><Avatar src={getPhotoSrc(user.photo_url)} /></TableCell>
-                    <TableCell sx={tableCellStyle}>{user.name}</TableCell>
-                    <TableCell sx={tableCellStyle}>{user.last_name}</TableCell>
-                    <TableCell sx={tableCellStyle}>{user.email}</TableCell>
-                    <TableCell sx={tableCellStyle}>{user.privilege || 'N/A'}</TableCell>
-                    <TableCell sx={tableCellStyle}>
-                      <IconButton
-                        onClick={() => handleToggleStatus(user)}
-                        aria-label={user.status === 'enabled' || user.enabled === true ? 'Désactiver' : 'Activer'}
-                        sx={{
-                          color: user.status === 'enabled' || user.enabled === true ? '#4caf50' : '#f44336',
-                          marginRight: 2
-                        }}
-                      >
-                        {user.status === 'enabled' || user.enabled === true ? <ToggleOnIcon fontSize="large" /> : <ToggleOffIcon fontSize="large" />}
-                      </IconButton>
-                    </TableCell>
-                    <TableCell sx={tableCellStyle}>
-                      <IconButton onClick={() => openEditDialog(user)} color="primary" aria-label="Modifier l'utilisateur">
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton onClick={() => openDeleteDialog(user)} color="error" aria-label="Supprimer l'utilisateur">
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
+          <>
+            <TableContainer component={Paper} sx={{ background: isDarkMode ? '#2A354D' : '#FFFFFF' }}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={tableCellHeaderStyle}>Photo</TableCell>
+                    <TableCell sx={tableCellHeaderStyle}>Prénom</TableCell>
+                    <TableCell sx={tableCellHeaderStyle}>Nom</TableCell>
+                    <TableCell sx={tableCellHeaderStyle}>Email</TableCell>
+                    <TableCell sx={tableCellHeaderStyle}>Privilège</TableCell>
+                    <TableCell sx={tableCellHeaderStyle}>Statut</TableCell>
+                    <TableCell sx={tableCellHeaderStyle}>Actions</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {currentUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell sx={tableCellStyle}><Avatar src={getPhotoSrc(user.photo_url)} /></TableCell>
+                      <TableCell sx={tableCellStyle}>{user.name}</TableCell>
+                      <TableCell sx={tableCellStyle}>{user.last_name}</TableCell>
+                      <TableCell sx={tableCellStyle}>{user.email}</TableCell>
+                      <TableCell sx={tableCellStyle}>{user.privilege || 'N/A'}</TableCell>
+                      <TableCell sx={tableCellStyle}>
+                        <IconButton
+                          onClick={() => handleToggleStatus(user)}
+                          aria-label={user.status === 'enabled' || user.enabled === true ? 'Désactiver' : 'Activer'}
+                          sx={{
+                            color: user.status === 'enabled' || user.enabled === true ? '#4caf50' : '#f44336',
+                            marginRight: 2
+                          }}
+                        >
+                          {user.status === 'enabled' || user.enabled === true ? <ToggleOnIcon fontSize="large" /> : <ToggleOffIcon fontSize="large" />}
+                        </IconButton>
+                      </TableCell>
+                      <TableCell sx={tableCellStyle}>
+                        <IconButton onClick={() => openEditDialog(user)} color="primary" aria-label="Modifier l'utilisateur">
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton onClick={() => openDeleteDialog(user)} color="error" aria-label="Supprimer l'utilisateur">
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            
+            {/* Pagination */}
+            {filteredUsers.length > usersPerPage && (
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                mt: 3,
+                p: 2,
+                background: isDarkMode ? '#2A354D' : '#FFFFFF',
+                borderRadius: 1
+              }}>
+                <Stack spacing={2} alignItems="center">
+                  <Pagination 
+                    count={totalPages} 
+                    page={currentPage} 
+                    onChange={handlePageChange}
+                    color="primary"
+                    size="large"
+                    sx={{
+                      '& .MuiPaginationItem-root': {
+                        color: isDarkMode ? '#F0F0F0' : '#333',
+                        backgroundColor: isDarkMode ? '#404B60' : '#fff',
+                        '&.Mui-selected': {
+                          backgroundColor: '#1976d2',
+                          color: '#fff'
+                        },
+                        '&:hover': {
+                          backgroundColor: isDarkMode ? '#555' : '#f5f5f5'
+                        }
+                      }
+                    }}
+                  />
+                </Stack>
+              </Box>
+            )}
+          </>
         )}
       </Box>
 
