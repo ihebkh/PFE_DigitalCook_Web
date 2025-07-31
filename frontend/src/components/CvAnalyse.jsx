@@ -6,7 +6,7 @@ import { Box, Typography, Paper, Button, CircularProgress, Grid, IconButton, Tab
 import { FaFilePdf, FaTimes } from 'react-icons/fa';
 import { useTheme } from '../context/themeContext';
 import Header from './Header';
-import { analyseCv } from '../service/cv/cvAnalyseService';
+import { analyseCv, getAllOffers } from '../service/cv/cvAnalyseService';
 import DescriptionIcon from '@mui/icons-material/Description';
 
 /**
@@ -37,17 +37,9 @@ const CvAnalyse = ({ collapsed }) => {
     const loadAllOffers = async () => {
       try {
         console.log("DEBUG: Chargement des offres depuis l'API");
-        const response = await fetch('http://localhost:8000/analyse/offres/all');
-        console.log("DEBUG: Réponse API:", response.status, response.ok);
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log("DEBUG: Offres reçues:", data.length);
-          setAllOffers(data);
-        } else {
-          console.error("Erreur lors du chargement des offres:", response.status);
-          setAllOffers([]);
-        }
+        const data = await getAllOffers();
+        console.log("DEBUG: Offres reçues:", data.length);
+        setAllOffers(data);
       } catch (err) {
         console.error("Erreur lors du chargement des offres:", err);
         setAllOffers([]);

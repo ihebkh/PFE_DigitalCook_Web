@@ -1,17 +1,61 @@
 from fastapi import APIRouter, HTTPException, Response, Cookie, Depends, Request, UploadFile, File, Body
 from app.Databases.mongo import get_mongo_collections
 from typing import Optional
-from app.Entites.user import UserAuth, UserProfileUpdate, AdminUserUpdate
+from app.Entites.user import UserAuth, UserProfileUpdate, AdminUserUpdate, ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailRequest
 from app.Services.user import authenticate_user
+from app.config.email_config import *
 from bson import ObjectId
 from fastapi.responses import JSONResponse, FileResponse
 import os
 from pydantic import BaseModel, EmailStr
+import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from datetime import datetime, timedelta
 
 router = APIRouter()
 
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../uploads')
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+def send_email(to_email: str, subject: str, body: str):
+    """Envoie un email via SMTP."""
+    try:
+        print(f"Tentative d'envoi d'email à {to_email}")
+        print(f"Configuration SMTP: {SMTP_SERVER}:{SMTP_PORT}")
+        print(f"Utilisateur SMTP: {SMTP_USERNAME}")
+        
+        # Vérifier si on est en mode développement (mot de passe par défaut)
+        if SMTP_PASSWORD == "your-app-password" or SMTP_PASSWORD == "a1b2c3IHEB50201529" or SMTP_PASSWORD == "a1b2c3IHEB50201529":
+            print("Mode développement détecté - Email non envoyé")
+            return False
+        
+        msg = MIMEMultipart()
+        msg['From'] = f"{EMAIL_FROM_NAME} <{EMAIL_FROM_ADDRESS}>"
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        
+        msg.attach(MIMEText(body, 'html'))
+        
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        print("Connexion SMTP établie, tentative de login...")
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        print("Login SMTP réussi")
+        text = msg.as_string()
+        server.sendmail(EMAIL_FROM_ADDRESS, to_email, text)
+        server.quit()
+        print("Email envoyé avec succès")
+        return True
+    except Exception as e:
+        print(f"Erreur envoi email: {e}")
+        print(f"Type d'erreur: {type(e).__name__}")
+        return False
+
+def generate_token():
+    """Génère un token sécurisé."""
+    return secrets.token_urlsafe(32)
 
 def create_session_cookie(response: Response, email: str):
     """Crée un cookie de session pour l'utilisateur."""
@@ -273,3 +317,234 @@ def create_user(user: UserCreate = Body(...)):
         "photo_url": user_dict.get("photo_url"),
         "privilege": privilege_doc["label"]
     }
+
+@router.post("/forgot-password")
+def forgot_password(request: ForgotPasswordRequest):
+    """Envoie un email de réinitialisation de mot de passe."""
+    _, users_col, _, _, _ = get_mongo_collections()
+    
+    # Vérifier si l'utilisateur existe
+    user = users_col.find_one({"email": request.email})
+    if not user:
+        # Pour des raisons de sécurité, on ne révèle pas si l'email existe ou non
+        return {"message": "Si cet email existe dans notre base de données, vous recevrez un email de réinitialisation."}
+    
+    # Générer un token de réinitialisation
+    reset_token = generate_token()
+    token_expiry = datetime.utcnow() + timedelta(hours=RESET_TOKEN_EXPIRY_HOURS)
+    
+    # Sauvegarder le token dans la base de données
+    users_col.update_one(
+        {"email": request.email},
+        {
+            "$set": {
+                "reset_token": reset_token,
+                "reset_token_expiry": token_expiry
+            }
+        }
+    )
+    
+    # Préparer l'email
+    reset_url = f"{FRONTEND_URL}/reset-password?token={reset_token}&email={request.email}"
+    
+    email_body = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h2 style="color: #f5b335; margin-bottom: 10px;">Réinitialisation de votre mot de passe</h2>
+            </div>
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <p>Bonjour <strong>{user.get('name', '')} {user.get('last_name', '')}</strong>,</p>
+                <p>Vous avez demandé la réinitialisation de votre mot de passe.</p>
+                <p>Cliquez sur le bouton ci-dessous pour réinitialiser votre mot de passe :</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{reset_url}" style="background-color: #f5b335; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Réinitialiser le mot de passe</a>
+                </div>
+                <p style="font-size: 14px; color: #666;">
+                    Ce lien expirera dans {RESET_TOKEN_EXPIRY_HOURS} heure(s).
+                </p>
+                <p style="font-size: 14px; color: #666;">
+                    Si vous n'avez pas demandé cette réinitialisation, ignorez cet email.
+                </p>
+            </div>
+            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                <p style="color: #666; font-size: 14px;">
+                    Cordialement,<br>
+                    <strong>L'équipe DigitalCook</strong>
+                </p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    # Envoyer l'email
+    if send_email(request.email, "Réinitialisation de mot de passe - DigitalCook", email_body):
+        return {"message": "Email de réinitialisation envoyé avec succès."}
+    else:
+        # En mode développement, on peut retourner le lien directement
+        if SMTP_PASSWORD == "your-app-password" or SMTP_PASSWORD == "a1b2c3IHEB50201529" or SMTP_PASSWORD == "a1b2c3IHEB50201529":
+            return {
+                "message": "Mode développement - Email non envoyé",
+                "reset_url": reset_url,
+                "token": reset_token,
+                "email": request.email
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Erreur lors de l'envoi de l'email.")
+
+@router.post("/reset-password")
+def reset_password(request: ResetPasswordRequest):
+    """Réinitialise le mot de passe avec le token."""
+    _, users_col, _, _, _ = get_mongo_collections()
+    
+    # Vérifier le token
+    user = users_col.find_one({
+        "email": request.email,
+        "reset_token": request.token,
+        "reset_token_expiry": {"$gt": datetime.utcnow()}
+    })
+    
+    if not user:
+        raise HTTPException(status_code=400, detail="Token invalide ou expiré.")
+    
+    # Mettre à jour le mot de passe
+    users_col.update_one(
+        {"email": request.email},
+        {
+            "$set": {"password": request.new_password},
+            "$unset": {"reset_token": "", "reset_token_expiry": ""}
+        }
+    )
+    
+    return {"message": "Mot de passe réinitialisé avec succès."}
+
+@router.post("/verify-email")
+def verify_email(request: VerifyEmailRequest):
+    """Vérifie l'email avec le token."""
+    _, users_col, _, _, _ = get_mongo_collections()
+    
+    # Vérifier le token
+    user = users_col.find_one({
+        "email": request.email,
+        "verification_token": request.token,
+        "verification_token_expiry": {"$gt": datetime.utcnow()}
+    })
+    
+    if not user:
+        raise HTTPException(status_code=400, detail="Token de vérification invalide ou expiré.")
+    
+    # Marquer l'email comme vérifié
+    users_col.update_one(
+        {"email": request.email},
+        {
+            "$set": {"email_verified": True},
+            "$unset": {"verification_token": "", "verification_token_expiry": ""}
+        }
+    )
+    
+    return {"message": "Email vérifié avec succès."}
+
+@router.post("/send-verification-email")
+def send_verification_email(request: ForgotPasswordRequest):
+    """Envoie un email de vérification."""
+    _, users_col, _, _, _ = get_mongo_collections()
+    
+    user = users_col.find_one({"email": request.email})
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé.")
+    
+    if user.get("email_verified"):
+        raise HTTPException(status_code=400, detail="Cet email est déjà vérifié.")
+    
+    # Générer un token de vérification
+    verification_token = generate_token()
+    token_expiry = datetime.utcnow() + timedelta(hours=VERIFICATION_TOKEN_EXPIRY_HOURS)
+    
+    # Sauvegarder le token
+    users_col.update_one(
+        {"email": request.email},
+        {
+            "$set": {
+                "verification_token": verification_token,
+                "verification_token_expiry": token_expiry
+            }
+        }
+    )
+    
+    # Préparer l'email
+    verification_url = f"{FRONTEND_URL}/verify-email?token={verification_token}&email={request.email}"
+    
+    email_body = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h2 style="color: #f5b335; margin-bottom: 10px;">Vérification de votre adresse email</h2>
+            </div>
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <p>Bonjour <strong>{user.get('name', '')} {user.get('last_name', '')}</strong>,</p>
+                <p>Veuillez vérifier votre adresse email en cliquant sur le bouton ci-dessous :</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{verification_url}" style="background-color: #f5b335; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Vérifier mon email</a>
+                </div>
+                <p style="font-size: 14px; color: #666;">
+                    Ce lien expirera dans {VERIFICATION_TOKEN_EXPIRY_HOURS} heure(s).
+                </p>
+            </div>
+            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                <p style="color: #666; font-size: 14px;">
+                    Cordialement,<br>
+                    <strong>L'équipe DigitalCook</strong>
+                </p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    # Envoyer l'email
+    if send_email(request.email, "Vérification de votre email - DigitalCook", email_body):
+        return {"message": "Email de vérification envoyé avec succès."}
+    else:
+        raise HTTPException(status_code=500, detail="Erreur lors de l'envoi de l'email.")
+
+@router.get("/test-email-config")
+def test_email_config():
+    """Test de la configuration email."""
+    try:
+        print(f"Configuration SMTP:")
+        print(f"  Serveur: {SMTP_SERVER}")
+        print(f"  Port: {SMTP_PORT}")
+        print(f"  Utilisateur: {SMTP_USERNAME}")
+        print(f"  Mot de passe configuré: {'Oui' if SMTP_PASSWORD != 'your-app-password' else 'Non'}")
+        print(f"  Email d'expédition: {EMAIL_FROM_ADDRESS}")
+        
+        # Test de connexion SMTP
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        server.quit()
+        
+        return {
+            "status": "success",
+            "message": "Configuration SMTP valide",
+            "config": {
+                "server": SMTP_SERVER,
+                "port": SMTP_PORT,
+                "username": SMTP_USERNAME,
+                "from_address": EMAIL_FROM_ADDRESS
+            }
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Erreur de configuration SMTP: {str(e)}",
+            "config": {
+                "server": SMTP_SERVER,
+                "port": SMTP_PORT,
+                "username": SMTP_USERNAME,
+                "from_address": EMAIL_FROM_ADDRESS
+            }
+        }

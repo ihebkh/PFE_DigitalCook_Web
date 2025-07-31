@@ -23,3 +23,15 @@ class AdminUserUpdate(BaseModel):
     privilege: Optional[str] = None # Le label du privilège, ex: "TopAdmin"
     status: Optional[str] = None    # Ajouté pour activer/désactiver
     enabled: Optional[bool] = None  # Ajouté pour activer/désactiver
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    token: str
+    new_password: str
+
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr
+    token: str

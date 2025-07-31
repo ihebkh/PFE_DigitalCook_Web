@@ -14,6 +14,9 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { useAuth } from '../context/authContext';
 import { useTheme } from '../context/themeContext';
 import CvAnalyse from '../components/CvAnalyse';
+import ForgotPassword from '../components/ForgotPassword';
+import ResetPassword from '../components/ResetPassword';
+import VerifyEmail from '../components/VerifyEmail';
 
 function DarkModeWrapper({ children }) {
   const { isDarkMode } = useTheme();
@@ -64,6 +67,10 @@ export default function AppRouter() {
         )}
         <Routes>
           <Route path="/" element={user ? <Navigate to={getDefaultRoute()} /> : <Login />} />
+          <Route path="/login" element={user ? <Navigate to={getDefaultRoute()} /> : <Login />} />
+          <Route path="/forgot-password" element={user ? <Navigate to={getDefaultRoute()} /> : <ForgotPassword />} />
+          <Route path="/reset-password" element={user ? <Navigate to={getDefaultRoute()} /> : <ResetPassword />} />
+          <Route path="/verify-email" element={user ? <Navigate to={getDefaultRoute()} /> : <VerifyEmail />} />
           <Route
             path="/dashboard"
             element={user && user.role === "TopAdmin" ? <Dashboard collapsed={collapsed} /> : <Navigate to="/" />}

@@ -70,6 +70,27 @@ export default function LoginForm() {
       >
         {loading ? 'Connexion en cours...' : 'se connecter'}
       </button>
+      
+      {/* Lien mot de passe oublié */}
+      <div style={{ 
+        textAlign: 'center', 
+        marginTop: '15px' 
+      }}>
+        <button
+          type="button"
+          onClick={() => navigate('/forgot-password')}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#f5b335',
+            cursor: 'pointer',
+            fontSize: '14px',
+            textDecoration: 'underline'
+          }}
+        >
+          Mot de passe oublié ?
+        </button>
+      </div>
     </form>
   );
 }
