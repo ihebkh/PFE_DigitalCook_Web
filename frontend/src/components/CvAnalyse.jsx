@@ -1,12 +1,13 @@
 // CvAnalyse.jsx
 // Composant d'analyse de CV (upload PDF, affichage résultats, UX optimisée)
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Box, Typography, Paper, Button, CircularProgress, Grid, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import { Box, Typography, Paper, Button, CircularProgress, Grid, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Pagination } from '@mui/material';
 import { FaFilePdf, FaTimes } from 'react-icons/fa';
 import { useTheme } from '../context/themeContext';
 import Header from './Header';
 import { analyseCv } from '../service/cv/cvAnalyseService';
+import DescriptionIcon from '@mui/icons-material/Description';
 
 /**
  * Composant principal pour l'analyse de CV (upload PDF, affichage des résultats d'analyse)
@@ -17,9 +18,46 @@ const CvAnalyse = ({ collapsed }) => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [allOffers, setAllOffers] = useState([]);
+  const [loadingOffers, setLoadingOffers] = useState(true);
   const { isDarkMode } = useTheme();
   const marginLeft = collapsed ? 90 : 270;
   const [showAllExperiences, setShowAllExperiences] = useState(false);
+  
+  // États pour la pagination des offres correspondantes
+  const [currentPage, setCurrentPage] = useState(1);
+  const [offersPerPage] = useState(5);
+  
+  // États pour la pagination de toutes les offres
+  const [currentAllOffersPage, setCurrentAllOffersPage] = useState(1);
+  const [allOffersPerPage] = useState(10);
+
+  // Charger toutes les offres d'emploi au montage du composant
+  useEffect(() => {
+    const loadAllOffers = async () => {
+      try {
+        console.log("DEBUG: Chargement des offres depuis l'API");
+        const response = await fetch('http://localhost:8000/analyse/offres/all');
+        console.log("DEBUG: Réponse API:", response.status, response.ok);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log("DEBUG: Offres reçues:", data.length);
+          setAllOffers(data);
+        } else {
+          console.error("Erreur lors du chargement des offres:", response.status);
+          setAllOffers([]);
+        }
+      } catch (err) {
+        console.error("Erreur lors du chargement des offres:", err);
+        setAllOffers([]);
+      } finally {
+        setLoadingOffers(false);
+      }
+    };
+
+    loadAllOffers();
+  }, []);
 
   // Gestion du drag & drop de fichiers
   const onDrop = useCallback((acceptedFiles) => {
@@ -44,14 +82,44 @@ const CvAnalyse = ({ collapsed }) => {
     setLoading(true);
     setError('');
     setResult(null);
+    setCurrentPage(1); // Reset à la première page
     try {
       const data = await analyseCv(selectedFiles[0]);
+      console.log("Données reçues du backend:", data); // Debug
+      console.log("Expériences:", data.experiences); // Debug
+      console.log("Offres correspondantes:", data.matches); // Debug
       setResult(data);
     } catch (err) {
+      console.error("Erreur lors de l'analyse:", err); // Debug
       setError(err.message || "Erreur inconnue");
     } finally {
       setLoading(false);
     }
+  };
+
+  // Calculs pour la pagination
+  const indexOfLastOffer = currentPage * offersPerPage;
+  const indexOfFirstOffer = indexOfLastOffer - offersPerPage;
+  const currentOffers = result?.matches ? 
+    result.matches
+      .sort((a, b) => b.global_score - a.global_score)
+      .slice(indexOfFirstOffer, indexOfLastOffer) : [];
+  const totalPages = result?.matches ? Math.ceil(result.matches.length / offersPerPage) : 0;
+
+  // Gestion du changement de page
+  const handlePageChange = (event, value) => {
+    setCurrentPage(value);
+  };
+  
+  // Calculs pour la pagination de toutes les offres
+  const indexOfLastAllOffer = currentAllOffersPage * allOffersPerPage;
+  const indexOfFirstAllOffer = indexOfLastAllOffer - allOffersPerPage;
+  const currentAllOffers = allOffers.slice(indexOfFirstAllOffer, indexOfLastAllOffer);
+  const totalAllOffersPages = Math.ceil(allOffers.length / allOffersPerPage);
+
+  // Gestion du changement de page pour toutes les offres
+  const handleAllOffersPageChange = (event, value) => {
+    setCurrentAllOffersPage(value);
   };
 
   // Rendu principal
@@ -69,9 +137,18 @@ const CvAnalyse = ({ collapsed }) => {
         background: isDarkMode ? '#1E2B45' : '#fff',
         color: isDarkMode ? '#F0F0F0' : '#333',
       }}>
-        <Typography variant="h4" gutterBottom>Analyse de CV</Typography>
+       <Box display="flex" alignItems="center" mb={3}>
+        <DescriptionIcon sx={{ mr: 2, color: 'primary.main', fontSize: 40 }} />
+        <Typography variant="h4" color="primary">
+          Analyse intelligente de CV
+        </Typography>
+      </Box>
+
         {/* Zone de drop et sélection de fichier */}
         <Paper sx={{ p: 3, mb: 3, background: isDarkMode ? '#2A354D' : '#fff', color: isDarkMode ? '#F0F0F0' : '#333' }}>
+          <Typography variant="h6" gutterBottom sx={{ color: isDarkMode ? '#F0F0F0' : '#333', mb: 2 }}>
+            Analysez votre CV pour trouver les offres correspondantes
+          </Typography>
           <Box
             {...getRootProps()} 
             sx={{ 
@@ -224,64 +301,205 @@ const CvAnalyse = ({ collapsed }) => {
               {/* Offres correspondantes */}
               <Grid item xs={12}>
                 <Paper sx={{ p: 2, background: isDarkMode ? '#2A354D' : '#fff' }}>
-                  <Typography variant="subtitle1" sx={{ mb: 1 }}><b>Offres correspondantes</b></Typography>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                    <b>Offres correspondantes ({result.matches?.length || 0})</b>
+                  </Typography>
                   {result.matches && result.matches.length > 0 ? (
-                    <TableContainer component={Paper} sx={{ mt: 2, background: isDarkMode ? '#22304a' : '#fff' }}>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>N°</TableCell>
-                            <TableCell>Titre</TableCell>
-                            <TableCell>Société</TableCell>
-                            <TableCell>Ville</TableCell>
-                            <TableCell>Score</TableCell>
-                            <TableCell>Compétences communes</TableCell>
-                            <TableCell>Langues communes</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {result.matches
-                            .sort((a, b) => b.global_score - a.global_score)
-                            .map((m, i) => {
+                    <>
+                      <TableContainer component={Paper} sx={{ mt: 2, background: isDarkMode ? '#22304a' : '#fff' }}>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>N°</TableCell>
+                              <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Titre</TableCell>
+                              <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Société</TableCell>
+                              <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Ville</TableCell>
+                              <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Type de Contrat</TableCell>
+                              <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Salaire</TableCell>
+                              <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Score</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {currentOffers.map((m, i) => {
                               const offre = m.offre;
+                              // Formater le salaire
+                              const minSalaire = offre.minSalaire || 0;
+                              const maxSalaire = offre.maxSalaire || 0;
+                              const devise = offre.deviseSalaire || '';
+                              const salaire = minSalaire && maxSalaire ? `${minSalaire} - ${maxSalaire} ${devise}` : 'Non spécifié';
+                              
+                              // Formater le score en pourcentage
+                              const scorePercentage = Math.round(m.global_score * 100);
+                              
                               return (
-                                <TableRow key={i}>
-                                  <TableCell>{i + 1}</TableCell>
-                                  <TableCell>{offre.titre}</TableCell>
-                                  <TableCell>{offre.societe}</TableCell>
-                                  <TableCell>{offre.lieuSociete || offre.ville}</TableCell>
-                                  <TableCell>{m.global_score.toFixed(2)}</TableCell>
-                                  <TableCell>
-                                    {m.matching_skills && m.matching_skills.length > 0 ? (
-                                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                        {m.matching_skills.map((skill, idx) => (
-                                          <Paper key={idx} sx={{ px: 1, py: 0.2, bgcolor: '#e3f2fd', fontSize: 13, m: 0 }}>{skill}</Paper>
-                                        ))}
-                                      </Box>
-                                    ) : 'Aucune'}
+                                <TableRow key={i} sx={{ 
+                                  '&:hover': { 
+                                    backgroundColor: isDarkMode ? '#2A354D' : '#f5f5f5' 
+                                  } 
+                                }}>
+                                  <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>
+                                    {indexOfFirstOffer + i + 1}
                                   </TableCell>
-                                  <TableCell>
-                                    {m.matching_languages && m.matching_languages.length > 0 ? (
-                                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                        {m.matching_languages.map((lang, idx) => (
-                                          <Paper key={idx} sx={{ px: 1, py: 0.2, bgcolor: '#ffe0b2', fontSize: 13, m: 0 }}>{lang}</Paper>
-                                        ))}
-                                      </Box>
-                                    ) : 'Aucune'}
+                                  <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>{offre.titre}</TableCell>
+                                  <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{offre.societe}</TableCell>
+                                  <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{offre.lieuSociete || offre.ville}</TableCell>
+                                  <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{offre.typeContrat}</TableCell>
+                                  <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{salaire}</TableCell>
+                                  <TableCell sx={{ 
+                                    color: scorePercentage >= 80 ? '#4caf50' : 
+                                           scorePercentage >= 60 ? '#ff9800' : '#f44336',
+                                    fontWeight: 'bold'
+                                  }}>
+                                    {scorePercentage}%
                                   </TableCell>
                                 </TableRow>
                               );
                             })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                      
+                      {/* Pagination */}
+                      {totalPages > 1 && (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                          <Pagination
+                            count={totalPages}
+                            page={currentPage}
+                            onChange={handlePageChange}
+                            color="primary"
+                            size="small"
+                            sx={{
+                              '& .MuiPaginationItem-root': {
+                                color: isDarkMode ? '#F0F0F0' : '#333',
+                                backgroundColor: isDarkMode ? '#2A354D' : '#fff',
+                                '&:hover': {
+                                  backgroundColor: isDarkMode ? '#404B60' : '#f5f5f5'
+                                },
+                                '&.Mui-selected': {
+                                  backgroundColor: isDarkMode ? '#1976d2' : '#1976d2',
+                                  color: '#fff'
+                                }
+                              }
+                            }}
+                          />
+                        </Box>
+                      )}
+                      
+                      {/* Informations de pagination */}
+                      <Box sx={{ mt: 1, textAlign: 'center' }}>
+                        <Typography variant="body2" sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>
+                          Affichage {indexOfFirstOffer + 1}-{Math.min(indexOfLastOffer, result.matches.length)} sur {result.matches.length} offres
+                        </Typography>
+                      </Box>
+                    </>
                   ) : (
-                    <Typography sx={{ mt: 2 }}>Aucune offre ne correspond au seuil.</Typography>
+                    <Typography sx={{ mt: 2, color: isDarkMode ? '#F0F0F0' : '#333' }}>Aucune offre ne correspond au seuil.</Typography>
                   )}
                 </Paper>
               </Grid>
             </Grid>
           </Box>
+        )}
+
+        {/* Section : Toutes les offres disponibles - Affichée seulement si pas d'analyse terminée */}
+        {!result && (
+          <Paper sx={{ p: 3, mb: 3, background: isDarkMode ? '#2A354D' : '#fff', color: isDarkMode ? '#F0F0F0' : '#333' }}>
+            <Box display="flex" alignItems="center" mb={2}>
+              <Typography variant="h5" sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>
+                Toutes les offres d'emploi disponibles ({allOffers.length})
+              </Typography>
+            </Box>
+            
+            {loadingOffers ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress size={40} sx={{ color: isDarkMode ? '#F0F0F0' : '#1976d2' }} />
+              </Box>
+            ) : (
+              <>
+                <TableContainer component={Paper} sx={{ background: isDarkMode ? '#22304a' : '#fff' }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>N°</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Titre</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Société</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Ville</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Salaire</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Type</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Expérience</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Compétences</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Langues</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {currentAllOffers.map((offer, index) => (
+                        <TableRow key={offer.id || index} sx={{ 
+                          '&:hover': { 
+                            backgroundColor: isDarkMode ? '#2A354D' : '#f5f5f5' 
+                          } 
+                        }}>
+                          <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{indexOfFirstAllOffer + index + 1}</TableCell>
+                          <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>{offer.titre}</TableCell>
+                          <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{offer.societe}</TableCell>
+                          <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{offer.ville}</TableCell>
+                          <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{offer.salaire}</TableCell>
+                          <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{offer.typeContrat}</TableCell>
+                          <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{offer.experience}</TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {offer.competences && offer.competences.map((comp, idx) => (
+                                <Paper key={idx} sx={{ px: 1, py: 0.2, bgcolor: '#e3f2fd', fontSize: 12, m: 0 }}>{comp.trim()}</Paper>
+                              ))}
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {offer.langues && offer.langues.map((lang, idx) => (
+                                <Paper key={idx} sx={{ px: 1, py: 0.2, bgcolor: '#ffe0b2', fontSize: 12, m: 0 }}>{lang}</Paper>
+                              ))}
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                
+                {/* Pagination pour toutes les offres */}
+                {totalAllOffersPages > 1 && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                    <Pagination
+                      count={totalAllOffersPages}
+                      page={currentAllOffersPage}
+                      onChange={handleAllOffersPageChange}
+                      color="primary"
+                      size="small"
+                      sx={{
+                        '& .MuiPaginationItem-root': {
+                          color: isDarkMode ? '#F0F0F0' : '#333',
+                          backgroundColor: isDarkMode ? '#2A354D' : '#fff',
+                          '&:hover': {
+                            backgroundColor: isDarkMode ? '#404B60' : '#f5f5f5'
+                          },
+                          '&.Mui-selected': {
+                            backgroundColor: isDarkMode ? '#1976d2' : '#1976d2',
+                            color: '#fff'
+                          }
+                        }
+                      }}
+                    />
+                  </Box>
+                )}
+                
+                {/* Informations de pagination pour toutes les offres */}
+                <Box sx={{ mt: 1, textAlign: 'center' }}>
+                  <Typography variant="body2" sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>
+                    Affichage {indexOfFirstAllOffer + 1}-{Math.min(indexOfLastAllOffer, allOffers.length)} sur {allOffers.length} offres
+                  </Typography>
+                </Box>
+              </>
+            )}
+          </Paper>
         )}
       </main>
     </div>

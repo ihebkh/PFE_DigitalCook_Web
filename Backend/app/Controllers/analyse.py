@@ -32,6 +32,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from bson import ObjectId
+from datetime import datetime
 
 router = APIRouter()
 
@@ -39,9 +41,9 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 nlp = spacy.load('en_core_web_lg')
 gc = geonamescache.GeonamesCache()
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-SKILL_DB_PATH = r"C:\Users\khmir\Desktop\PFE_Web_DigitalCook\Backend\app\file\skill_db_relax_20.json"
+SKILL_DB_PATH = r"C:\Users\Khmiri iheb\Desktop\PFE_Web_DigitalCook\Backend\app\file\skill_db_relax_20.json"
 
-TOKEN_DIST_PATH = r"C:\Users\khmir\Desktop\PFE_Web_DigitalCook\Backend\app\file\token_dist.json"
+TOKEN_DIST_PATH = r"C:\Users\Khmiri iheb\Desktop\PFE_Web_DigitalCook\Backend\app\file\token_dist.json"
 with open(SKILL_DB_PATH, 'r', encoding='utf-8') as f:
     SKILL_DB = json.load(f)
 skill_extractor = SkillExtractor(nlp, SKILL_DB, PhraseMatcher)
@@ -243,12 +245,24 @@ def compute_similarity(cv_text, offre_text):
     return float(sim[0][0])
 
 def extract_skills_from_offre(offre):
-    comp = offre.get('competenceRequises', '')
-    skills = re.split(r'[;,\n]', comp)
-    return set(s.strip().lower() for s in skills if s.strip())
+    # Essayer d'abord le format MongoDB, puis le format de test
+    if 'competenceRequises' in offre:
+        comp = offre.get('competenceRequises', '')
+        skills = re.split(r'[;,\n]', comp)
+        return set(s.strip().lower() for s in skills if s.strip())
+    elif 'competences' in offre:
+        return set(s.strip().lower() for s in offre['competences'] if s.strip())
+    else:
+        return set()
 
 def extract_languages_from_offre(offre):
-    return set(l.lower().split(' ')[0] for l in offre.get('langue', []) if isinstance(l, str))
+    # Essayer d'abord le format MongoDB, puis le format de test
+    if 'langue' in offre:
+        return set(l.lower().split(' ')[0] for l in offre.get('langue', []) if isinstance(l, str))
+    elif 'langues' in offre:
+        return set(l.lower().split(' ')[0] for l in offre['langues'] if isinstance(l, str))
+    else:
+        return set()
 
 def normalize_langs(lang_list):
     return set(l.lower().split(' ')[0] for l in lang_list if isinstance(l, str))
@@ -272,11 +286,107 @@ def format_years_months(years_float):
     months = int(round((years_float - years) * 12))
     return f"{years} an{'s' if years > 1 else ''} {months} mois"
 
+def serialize_mongo_data(data):
+    """Convertit les données MongoDB en format JSON sérialisable"""
+    if isinstance(data, ObjectId):
+        return str(data)
+    elif isinstance(data, datetime):
+        return data.isoformat()
+    elif isinstance(data, dict):
+        return {key: serialize_mongo_data(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [serialize_mongo_data(item) for item in data]
+    else:
+        return data
+
+@router.get("/test-db")
+def test_database():
+    try:
+        _, _, offres_col, _, _ = get_mongo_collections()
+        total_offres = offres_col.count_documents({})
+        active_offres = offres_col.count_documents({"status": "active"})
+        
+        # Récupérer quelques exemples d'offres
+        sample_offres = list(offres_col.find({}, {"_id": 0}).limit(3))
+        
+        return JSONResponse(content={
+            "total_offres": total_offres,
+            "active_offres": active_offres,
+            "sample_offres": sample_offres,
+            "message": "Test de la base de données réussi"
+        })
+    except Exception as e:
+        return JSONResponse(content={
+            "error": str(e),
+            "message": "Erreur lors du test de la base de données"
+        })
+
+@router.get("/offres/all")
+def get_all_offres():
+    try:
+        print("DEBUG: Tentative de récupération des offres depuis MongoDB")
+        _, _, offres_col, _, _ = get_mongo_collections()
+        print(f"DEBUG: Collection offres trouvée: {offres_col}")
+        
+        # Récupérer toutes les offres actives
+        offres = list(offres_col.find({"status": "active", "isDeleted": False}))
+        print(f"DEBUG: Nombre d'offres récupérées: {len(offres)}")
+        
+        # Formater les offres pour le frontend
+        offres_formatees = []
+        for offre in offres:
+            # Sérialiser les données MongoDB
+            offre_serialized = serialize_mongo_data(offre)
+            
+            # Traiter les compétences
+            competences_str = offre.get("competenceRequises", "")
+            competences = [comp.strip() for comp in competences_str.split(",")] if competences_str else []
+            
+            # Traiter les langues
+            langues = offre.get("langue", [])
+            if isinstance(langues, str):
+                langues = [langues]
+            
+            # Formater le salaire
+            min_salaire = offre.get('minSalaire', 0)
+            max_salaire = offre.get('maxSalaire', 0)
+            devise = offre.get('deviseSalaire', '')
+            salaire = f"{min_salaire} - {max_salaire} {devise}" if min_salaire and max_salaire else "Non spécifié"
+            
+            offre_formatee = {
+                "id": offre_serialized.get("_id", ""),
+                "titre": offre.get("titre", ""),
+                "societe": offre.get("societe", ""),
+                "ville": offre.get("ville", ""),
+                "lieuSociete": offre.get("lieuSociete", ""),
+                "competences": competences,
+                "langues": langues,
+                "salaire": salaire,
+                "typeContrat": offre.get("typeContrat", ""),
+                "experience": offre.get("experienceProfessionel", ""),
+                "description": offre.get("description", ""),
+                "responsabilites": offre.get("responsabilites", ""),
+                "qualification": offre.get("qualificationRequises", ""),
+                "disponibilite": offre.get("disponibilite", ""),
+                "pays": offre.get("pays", ""),
+                "onSiteOrRemote": offre.get("onSiteOrRemote", ""),
+                "isUrgent": offre.get("isUrgent", False),
+                "dateLimite": offre_serialized.get("dateLimite", ""),
+                "documentRequis": offre.get("documentRequis", [])
+            }
+            offres_formatees.append(offre_formatee)
+        
+        print(f"DEBUG: Offres formatées: {len(offres_formatees)}")
+        return JSONResponse(content=offres_formatees)
+    except Exception as e:
+        print(f"DEBUG: Erreur lors de la récupération des offres: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/analyse-cv")
 def analyse_cv(file: UploadFile = File(...)):
-    EXCEL_PATH1 = r"C:\Users\khmir\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset_experiences.xlsx"
-    EXCEL_PATH2 = r"C:\Users\khmir\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset_final.xlsx"
-    EXCEL_PATH3 = r"C:\Users\khmir\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset.xlsx"
+    EXCEL_PATH1 = r"C:\Users\Khmiri iheb\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset_experiences.xlsx"
+    EXCEL_PATH2 = r"C:\Users\Khmiri iheb\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset_final.xlsx"
+    EXCEL_PATH3 = r"C:\Users\Khmiri iheb\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset.xlsx"
     MODEL_PATH = 'random_forest_model.pkl'
     PREPROCESSOR_PATH = 'preprocessor.pkl'
     filename = file.filename.lower()
@@ -289,10 +399,13 @@ def analyse_cv(file: UploadFile = File(...)):
         if filename.endswith('.pdf'):
             txt_path = extract_text_from_pdf(tmp_path)
             skills = detectSkills(skill_extractor, txt_path)
+            print(f"DEBUG: Compétences extraites: {skills}")  # Debug
             try:
                 all_predictions = predict(txt_path)
                 experiences = [item["phrase"] for item in all_predictions if item["label"] == 1]
+                print(f"DEBUG: Expériences extraites: {experiences}")  # Debug
             except Exception as e:
+                print(f"DEBUG: Erreur lors de l'extraction des expériences: {e}")  # Debug
                 all_predictions = []
                 experiences = []
             duration = calculate_total_years_experience(txt_path)
@@ -307,6 +420,13 @@ def analyse_cv(file: UploadFile = File(...)):
                 cv_text = f.read()
             _, _, offres_col, _, _ = get_mongo_collections()
             offres = list(offres_col.find({"status": "active"}))
+            print(f"DEBUG: Nombre d'offres trouvées: {len(offres)}")  # Debug
+            
+            # Si aucune offre n'est trouvée, afficher un message
+            if not offres:
+                print("DEBUG: Aucune offre trouvée dans MongoDB")
+                offres = []
+            
             seuil = 0.28
             matches = []
             if experiences_fr and offres:

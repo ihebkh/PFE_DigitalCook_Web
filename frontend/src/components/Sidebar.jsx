@@ -3,14 +3,13 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import menuIcon from '../assets/menu.png';
-import { FaChevronLeft, FaBriefcase, FaTachometerAlt, FaClipboardList, FaBuilding, FaStore, FaCog, FaHandshake, FaSun, FaMoon } from 'react-icons/fa';
+import { FaChevronLeft, FaTachometerAlt, FaSun, FaMoon } from 'react-icons/fa';
 import { useTheme } from '../context/themeContext';
 import { useAuth } from '../context/authContext';
 
 // Définition des éléments de la sidebar (label, icône, chemin, rôles autorisés)
 const sidebarItems = [
   { label: 'Dashboard', icon: <FaTachometerAlt />, path: '/dashboard', roles: ['TopAdmin'] },
-  { label: 'Analyse CV', icon: <FaClipboardList />, path: '/analyse-cv', roles: ['TopAdmin'] },
 ];
 
 /**

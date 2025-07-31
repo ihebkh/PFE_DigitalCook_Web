@@ -30,7 +30,7 @@ export default function Dashboard({ collapsed }) {
           title="Dashboard" 
           width="1140"
           height="541.25"
-          src="https://app.powerbi.com/reportEmbed?reportId=0a977f2d-71b6-4439-a950-c17000833f24&autoAuth=true&ctid=604f1a96-cbe8-43f8-abbf-f8eaf5d85730&hideHeader=true&filterPaneEnabled=false&navContentPaneEnabled=false"
+          src="https://app.powerbi.com/reportEmbed?reportId=0a977f2d-71b6-4439-a950-c17000833f24&autoAuth=true&ctid=604f1a96-cbe8-43f8-abbf-f8eaf5d85730&filterPaneEnabled=false&navContentPaneEnabled=false"
           frameBorder="0" 
           allowFullScreen="true"
         ></iframe>

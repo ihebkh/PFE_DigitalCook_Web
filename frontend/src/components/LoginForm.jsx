@@ -19,10 +19,10 @@ export default function LoginForm() {
     e.preventDefault();
     const success = await login({ email, password });
     if (success) {
-      toast.success('Authentification réussie !');
+      toast.success('Authentification réussie !', { autoClose: 1500 });
       navigate('/dashboard');
     } else {
-      toast.error("Échec de l'authentification. Vérifiez vos identifiants.");
+      toast.error("Échec de l'authentification. Vérifiez vos identifiants.", { autoClose: 2000 });
     }
   };
 

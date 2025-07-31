@@ -3,13 +3,14 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import menuIcon from '../assets/menu.png';
-import { FaChevronLeft, FaBriefcase, FaTachometerAlt, FaClipboardList, FaBuilding, FaStore, FaCog, FaHandshake, FaSun, FaMoon } from 'react-icons/fa';
+import { FaChevronLeft, FaTachometerAlt, FaClipboardList, FaSun, FaMoon } from 'react-icons/fa';
 import { useTheme } from '../context/themeContext';
 
 // Définition des éléments de la sidebar utilisateur
 const userSidebarItems = [
-  { label: 'Dashboard', icon: <FaTachometerAlt />, path: '/dashboard' },
-  { label: 'cv ', icon: <FaBriefcase />, path: '/cv-parsing' },
+  { label: 'Dashboard', icon: <FaTachometerAlt />, path: '/Recruteur' },
+  { label: 'Recommandation', icon: <FaClipboardList />, path: '/cv-analyse'},
+
 
 ];
 

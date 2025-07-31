@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/authContext';
 import { useTheme } from '../context/themeContext';
 import { uploadProfilePhoto } from '../service/auth/authService';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 /**
  * Composant permettant à l'utilisateur de modifier son profil (nom, email, mot de passe, photo).
@@ -252,52 +253,88 @@ export default function EditProfile({ collapsed }) {
         {showPasswordChangeFields && (
           <div style={{ marginBottom: 16 }}>
             <label style={labelStyle}>Mot de passe actuel</label>
-            <input
-              type={showCurrentPassword ? 'text' : 'password'}
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              style={inputStyle}
-            />
-            <button
-              type="button"
-              onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-              style={{ marginLeft: 8, padding: '4px 8px' }}
-            >
-              {showCurrentPassword ? 'Masquer' : 'Afficher'}
-            </button>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showCurrentPassword ? 'text' : 'password'}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                style={{ ...inputStyle, paddingRight: '40px' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: isDarkMode ? '#F0F0F0' : '#666',
+                  padding: '4px',
+                }}
+              >
+                {showCurrentPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+              </button>
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
                 <label style={labelStyle}>Nouveau mot de passe</label>
-                <input
-                  type={showNewPassword ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  style={inputStyle}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                  style={{ marginLeft: 8, padding: '4px 8px' }}
-                >
-                  {showNewPassword ? 'Masquer' : 'Afficher'}
-                </button>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    style={{ ...inputStyle, paddingRight: '40px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: isDarkMode ? '#F0F0F0' : '#666',
+                      padding: '4px',
+                    }}
+                  >
+                    {showNewPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                  </button>
+                </div>
               </div>
               <div>
                 <label style={labelStyle}>Confirmer le mot de passe</label>
-                <input
-                  type={showConfirmNewPassword ? 'text' : 'password'}
-                  value={confirmNewPassword}
-                  onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  style={inputStyle}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
-                  style={{ marginLeft: 8, padding: '4px 8px' }}
-                >
-                  {showConfirmNewPassword ? 'Masquer' : 'Afficher'}
-                </button>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showConfirmNewPassword ? 'text' : 'password'}
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    style={{ ...inputStyle, paddingRight: '40px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: isDarkMode ? '#F0F0F0' : '#666',
+                      padding: '4px',
+                    }}
+                  >
+                    {showConfirmNewPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
