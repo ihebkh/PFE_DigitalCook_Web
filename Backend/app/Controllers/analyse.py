@@ -18,10 +18,6 @@ import pandas as pd
 import geonamescache
 import warnings
 import joblib
-from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
@@ -41,7 +37,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 nlp = spacy.load('en_core_web_lg')
 gc = geonamescache.GeonamesCache()
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-SKILL_DB_PATH = r"C:\Users\Khmiri iheb\Desktop\PFE_Web_DigitalCook\Backend\app\file\skill_db_relax_20.json"
+SKILL_DB_PATH = r"C:\Users\khmir\Desktop\PFE\PFE_Web_DigitalCook\Backend\skill_db_relax_20.json"
 
 TOKEN_DIST_PATH = r"C:\Users\Khmiri iheb\Desktop\PFE_Web_DigitalCook\Backend\app\file\token_dist.json"
 with open(SKILL_DB_PATH, 'r', encoding='utf-8') as f:

@@ -371,7 +371,7 @@ def forgot_password(request: ForgotPasswordRequest):
             <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
                 <p style="color: #666; font-size: 14px;">
                     Cordialement,<br>
-                    <strong>L'équipe DigitalCook</strong>
+                    <strong>L'équipe TalentExpo</strong>
                 </p>
             </div>
         </div>
@@ -380,7 +380,7 @@ def forgot_password(request: ForgotPasswordRequest):
     """
     
     # Envoyer l'email
-    if send_email(request.email, "Réinitialisation de mot de passe - DigitalCook", email_body):
+    if send_email(request.email, "Réinitialisation de mot de passe - TalentExpo", email_body):
         return {"message": "Email de réinitialisation envoyé avec succès."}
     else:
         # En mode développement, on peut retourner le lien directement
@@ -496,7 +496,7 @@ def send_verification_email(request: ForgotPasswordRequest):
             <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
                 <p style="color: #666; font-size: 14px;">
                     Cordialement,<br>
-                    <strong>L'équipe DigitalCook</strong>
+                    <strong>L'équipe TalentExpo</strong>
                 </p>
             </div>
         </div>
@@ -505,7 +505,7 @@ def send_verification_email(request: ForgotPasswordRequest):
     """
     
     # Envoyer l'email
-    if send_email(request.email, "Vérification de votre email - DigitalCook", email_body):
+    if send_email(request.email, "Vérification de votre email - TalentExpo", email_body):
         return {"message": "Email de vérification envoyé avec succès."}
     else:
         raise HTTPException(status_code=500, detail="Erreur lors de l'envoi de l'email.")
