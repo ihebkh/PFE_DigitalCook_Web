@@ -108,7 +108,9 @@ def calculate_total_years_experience(file_path):
         content = file.read()
     lines = content.splitlines()
     total_years = 0
+    experience_details = []
     printed_lines = set()
+    
     for line in lines:
         original_line = line
         line = line.lower()
@@ -124,8 +126,26 @@ def calculate_total_years_experience(file_path):
                 date1, date2 = parsed_dates[:2]
                 diff_years = (date2.year - date1.year) + (date2.month - date1.month) / 12.0
                 total_years += diff_years
+                
+                # Formater les dates pour l'affichage
+                date1_str = date1.strftime("%B %Y")
+                date2_str = date2.strftime("%B %Y")
+                duration_str = format_years_months(diff_years)
+                
+                experience_details.append({
+                    "line": original_line.strip(),
+                    "start_date": date1_str,
+                    "end_date": date2_str,
+                    "duration": duration_str,
+                    "years": round(diff_years, 2)
+                })
                 printed_lines.add(original_line)
-    return round(total_years, 2)
+    
+    return {
+        "total_years": round(total_years, 2),
+        "total_formatted": format_years_months(total_years),
+        "details": experience_details
+    }
 
 def detect_location(text, locations):
     return [loc for loc in locations if re.search(r'\b' + re.escape(loc) + r'\b', text, re.IGNORECASE)]
@@ -385,35 +405,110 @@ def analyse_cv(file: UploadFile = File(...)):
     EXCEL_PATH3 = r"C:\Users\Khmiri iheb\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset.xlsx"
     MODEL_PATH = 'random_forest_model.pkl'
     PREPROCESSOR_PATH = 'preprocessor.pkl'
+    
     filename = file.filename.lower()
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as tmp:
         tmp.write(file.file.read())
         tmp_path = tmp.name
+    
     try:
         if not (os.path.exists(MODEL_PATH) and os.path.exists(PREPROCESSOR_PATH)):
             train_dataset(EXCEL_PATH1, EXCEL_PATH2, EXCEL_PATH3)
+        
         if filename.endswith('.pdf'):
             txt_path = extract_text_from_pdf(tmp_path)
             skills = detectSkills(skill_extractor, txt_path)
             print(f"DEBUG: Compétences extraites: {skills}")  # Debug
+            
             try:
                 all_predictions = predict(txt_path)
                 experiences = [item["phrase"] for item in all_predictions if item["label"] == 1]
-                print(f"DEBUG: Expériences extraites: {experiences}")  # Debug
+                
+                # Filtrer la phrase spécifique à supprimer (plus robuste)
+                experiences = [exp for exp in experiences if not any([
+                    "o Gathered requirements and designed system architecture." in exp,
+                    "Gathered requirements and designed system architecture." in exp,
+                    "Gathered requirements and designed system architecture" in exp
+                ])]
+                
+                # Diviser les phrases qui contiennent des séparateurs (; ou .)
+                split_experiences = []
+                for exp in experiences:
+                    # Diviser par point-virgule
+                    if ';' in exp:
+                        parts = exp.split(';')
+                        for part in parts:
+                            part = part.strip()
+                            if part and not part.startswith('o '):
+                                split_experiences.append(part)
+                    else:
+                        split_experiences.append(exp)
+                
+                # Filtrer les phrases qui contiennent des listes de technologies, langues, etc.
+                filtered_experiences = []
+                for exp in split_experiences:
+                    # Vérifier si la phrase contient des patterns de listes
+                    exp_lower = exp.lower()
+                    
+                    # Patterns à filtrer
+                    patterns_to_filter = [
+                        'technologies:', 'technology:', 'tech:',
+                        'database administration:', 'db administration:',
+                        'web frameworks:', 'frameworks:',
+                        'devops tools:', 'tools:',
+                        'data tools:', 'data:',
+                        'languages:', 'langues:', 'lang:',
+                        'english:', 'french:', 'arabic:',
+                        'skills:', 'compétences:',
+                        'softwares:', 'software:',
+                        'platforms:', 'platform:',
+                        'libraries:', 'library:',
+                        'apis:', 'api:',
+                        'databases:', 'database:',
+                        'servers:', 'server:',
+                        'cloud:', 'clouds:',
+                        'os:', 'operating system:',
+                        'methodologies:', 'methodology:',
+                        'protocols:', 'protocol:',
+                        'standards:', 'standard:'
+                    ]
+                    
+                    # Vérifier si la phrase contient un pattern de liste
+                    is_list_pattern = any(pattern in exp_lower for pattern in patterns_to_filter)
+                    
+                    # Vérifier si la phrase contient beaucoup de virgules (indicateur de liste)
+                    comma_count = exp.count(',')
+                    is_likely_list = comma_count >= 3 and len(exp.split(',')) >= 4
+                    
+                    # Vérifier si la phrase contient des tirets multiples (indicateur de liste de langues)
+                    dash_count = exp.count('—') + exp.count('-')
+                    is_language_list = dash_count >= 2 and any(lang in exp_lower for lang in ['english', 'french', 'arabic', 'spanish', 'german', 'italian'])
+                    
+                    # Si ce n'est pas un pattern de liste, l'ajouter
+                    if not is_list_pattern and not is_likely_list and not is_language_list:
+                        filtered_experiences.append(exp)
+                
+                experiences = filtered_experiences
+                print(f"DEBUG: Expériences extraites après filtrage et division: {experiences}")  # Debug
+                
             except Exception as e:
                 print(f"DEBUG: Erreur lors de l'extraction des expériences: {e}")  # Debug
                 all_predictions = []
                 experiences = []
-            duration = calculate_total_years_experience(txt_path)
+            
+            duration_data = calculate_total_years_experience(txt_path)
             countries = detect_address(txt_path)
             cv_langues = ["Français (C1)", "Anglais (B2)"]
             experiences_original = experiences
+            
             if experiences:
                 experiences_fr = translate_experiences_to_french(experiences)
             else:
                 experiences_fr = []
+            
             with open(txt_path, 'r', encoding='utf-8') as f:
                 cv_text = f.read()
+            
             _, _, offres_col, _, _ = get_mongo_collections()
             offres = list(offres_col.find({"status": "active"}))
             print(f"DEBUG: Nombre d'offres trouvées: {len(offres)}")  # Debug
@@ -425,56 +520,69 @@ def analyse_cv(file: UploadFile = File(...)):
             
             seuil = 0.28
             matches = []
+            
             if experiences_fr and offres:
                 cv_text_for_match = " ".join(experiences_fr)
                 cv_skills = set(s.lower() for s in skills)
                 cv_languages = normalize_langs(cv_langues)
                 has_experience = len(experiences_fr) > 0
+                
                 for offre in offres:
                     offre_text = offre_to_text(offre)
                     offre_skills = extract_skills_from_offre(offre)
                     offre_languages = extract_languages_from_offre(offre)
-                    global_score, text_score, skills_score, langs_score, exp_score = compute_global_score(
-                        cv_text_for_match, offre_text, cv_skills, offre_skills, cv_languages, offre_languages, has_experience
-                    )
+                    
+                    # MODIFICATION: Vérifier qu'il y a au moins une compétence commune
                     matching_skills = list(cv_skills & offre_skills)
-                    matching_languages = list(cv_languages & offre_languages)
-                    if global_score > seuil:
-                        matches.append({
-                            "offre": {
-                                "titre": offre.get("titre", "Sans titre"),
-                                "societe": offre.get("societe", "N/A"),
-                                "ville": offre.get("ville", "N/A"),
-                                "lieuSociete": offre.get("lieuSociete", ""),
-                                "minSalaire": offre.get("minSalaire"),
-                                "maxSalaire": offre.get("maxSalaire"),
-                                "deviseSalaire": offre.get("deviseSalaire"),
-                                "salaireBrutPar": offre.get("salaireBrutPar"),
-                            },
-                            "global_score": global_score,
-                            "matching_skills": matching_skills,
-                            "matching_languages": matching_languages,
-                            "detail": {
-                                "texte": text_score,
-                                "competences": skills_score,
-                                "langues": langs_score,
-                                "experience": exp_score
-                            }
-                        })
+                    
+                    # Ne continuer que s'il y a au moins une compétence commune
+                    if len(matching_skills) > 0:
+                        global_score, text_score, skills_score, langs_score, exp_score = compute_global_score(
+                            cv_text_for_match, offre_text, cv_skills, offre_skills, cv_languages, offre_languages, has_experience
+                        )
+                        
+                        matching_languages = list(cv_languages & offre_languages)
+                        
+                        if global_score > seuil:
+                            matches.append({
+                                "offre": {
+                                    "titre": offre.get("titre", "Sans titre"),
+                                    "societe": offre.get("societe", "N/A"),
+                                    "ville": offre.get("ville", "N/A"),
+                                    "lieuSociete": offre.get("lieuSociete", ""),
+                                    "minSalaire": offre.get("minSalaire"),
+                                    "maxSalaire": offre.get("maxSalaire"),
+                                    "deviseSalaire": offre.get("deviseSalaire"),
+                                    "salaireBrutPar": offre.get("salaireBrutPar"),
+                                },
+                                "global_score": global_score,
+                                "matching_skills": matching_skills,
+                                "matching_languages": matching_languages,
+                                "detail": {
+                                    "texte": text_score,
+                                    "competences": skills_score,
+                                    "langues": langs_score,
+                                    "experience": exp_score
+                                }
+                            })
+            
             result = {
                 "competences": skills,
-                "duree_experience": format_years_months(duration),
+                "duree_experience": duration_data["total_formatted"],
+                "duree_experience_details": duration_data["details"],
                 "pays": countries,
                 "experiences": experiences_original,
                 "matches": matches,
                 "cv_sentences_scores": all_predictions,
                 "cv_text": cv_text
             }
+            
             # Suppression de l'enregistrement du résultat dans la base de données MongoDB
             return JSONResponse(content=result)
         else:
             raise HTTPException(status_code=400, detail="Type de fichier non supporté. Envoyez un PDF.")
+    
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        os.remove(tmp_path) 
+        os.remove(tmp_path)

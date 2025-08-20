@@ -24,4 +24,13 @@ export async function getAllOffers() {
   const response = await fetch(buildApiUrl(API_ENDPOINTS.ALL_OFFERS));
   if (!response.ok) throw new Error("Erreur lors du chargement des offres");
   return await response.json();
+}
+
+/**
+ * Récupère toutes les langues disponibles.
+ */
+export async function getAllLanguages() {
+  const response = await fetch(buildApiUrl('/analyse/langues/all'));
+  if (!response.ok) throw new Error("Erreur lors du chargement des langues");
+  return await response.json();
 } 

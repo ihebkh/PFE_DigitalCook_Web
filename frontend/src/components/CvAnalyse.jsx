@@ -258,11 +258,59 @@ const CvAnalyse = ({ collapsed }) => {
                   <Typography variant="subtitle1" sx={{ mb: 1 }}><b>Expériences</b></Typography>
                   {result.experiences && (
                     <>
-                      <ul style={{ marginBottom: 16 }}>
-                        {(showAllExperiences ? result.experiences : result.experiences.slice(0, 3)).map((exp, i) => (
-                          <li key={i}>{exp.replace(/^([*+])\s*/, '')}</li>
-                        ))}
-                      </ul>
+                                             <ul style={{ marginBottom: 16 }}>
+                         {(showAllExperiences ? result.experiences : result.experiences.slice(0, 3))
+                           .filter(exp => {
+                             // Filtrer la phrase spécifique
+                             if (exp.includes("o Gathered requirements and designed system architecture.")) {
+                               return false;
+                             }
+                             
+                             // Filtrer les patterns de listes de technologies/langues
+                             const expLower = exp.toLowerCase();
+                             const patternsToFilter = [
+                               'technologies:', 'technology:', 'tech:',
+                               'database administration:', 'db administration:',
+                               'web frameworks:', 'frameworks:',
+                               'devops tools:', 'tools:',
+                               'data tools:', 'data:',
+                               'languages:', 'langues:', 'lang:',
+                               'english:', 'french:', 'arabic:',
+                               'skills:', 'compétences:',
+                               'softwares:', 'software:',
+                               'platforms:', 'platform:',
+                               'libraries:', 'library:',
+                               'apis:', 'api:',
+                               'databases:', 'database:',
+                               'servers:', 'server:',
+                               'cloud:', 'clouds:',
+                               'os:', 'operating system:',
+                               'methodologies:', 'methodology:',
+                               'protocols:', 'protocol:',
+                               'standards:', 'standard:'
+                             ];
+                             
+                             // Vérifier si c'est un pattern de liste
+                             const isListPattern = patternsToFilter.some(pattern => expLower.includes(pattern));
+                             
+                             // Vérifier si c'est une liste avec beaucoup de virgules
+                             const commaCount = (exp.match(/,/g) || []).length;
+                             const isLikelyList = commaCount >= 3 && exp.split(',').length >= 4;
+                             
+                             // Vérifier si c'est une liste de langues avec tirets
+                             const dashCount = (exp.match(/[—-]/g) || []).length;
+                             const isLanguageList = dashCount >= 2 && ['english', 'french', 'arabic', 'spanish', 'german', 'italian'].some(lang => expLower.includes(lang));
+                             
+                             return !isListPattern && !isLikelyList && !isLanguageList;
+                           })
+                           .map((exp, i) => {
+                             // Nettoyer la phrase pour l'affichage
+                             let cleanExp = exp.replace(/^([*+])\s*/, '').replace(/^o\s+/, '');
+                             // S'assurer qu'il n'y a pas de point-virgule restant
+                             cleanExp = cleanExp.replace(/;\s*$/, '');
+                             return <li key={i}>{cleanExp}</li>;
+                           })}
+                       </ul>
                       {result.experiences.length > 3 && (
                         <Button
                           size="small"
@@ -283,13 +331,68 @@ const CvAnalyse = ({ collapsed }) => {
                   <Typography sx={{ mb: 2 }}>{result.pays && result.pays.join(", ")}</Typography>
                 </Paper>
               </Grid>
-              {/* Durée d'expérience */}
-              <Grid item xs={12} sx={{ display: 'flex' }}>
-                <Paper sx={{ p: 2, background: isDarkMode ? '#2A354D' : '#fff', flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                  <Typography variant="subtitle1" sx={{ mb: 1 }}><b>Durée d'expérience</b></Typography>
-                  <Typography sx={{ mb: 2 }}>{result.duree_experience}</Typography>
-                </Paper>
-              </Grid>
+                             {/* Durée d'expérience */}
+               <Grid item xs={12} sx={{ display: 'flex' }}>
+                 <Paper sx={{ p: 2, background: isDarkMode ? '#2A354D' : '#fff', flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                   <Typography variant="subtitle1" sx={{ mb: 1 }}><b>Durée d'expérience</b></Typography>
+                   
+                   {/* Détails des expériences */}
+                   {result.duree_experience_details && result.duree_experience_details.length > 0 && (
+                     <Box sx={{ mb: 2 }}>
+                       <Typography variant="body2" sx={{ mb: 1, fontWeight: 'bold', color: isDarkMode ? '#F0F0F0' : '#333' }}>
+                         Détails des périodes :
+                       </Typography>
+                       {result.duree_experience_details.map((detail, index) => (
+                         <Box key={index} sx={{ 
+                           mb: 1, 
+                           p: 1, 
+                           border: `1px solid ${isDarkMode ? '#404B60' : '#e0e0e0'}`, 
+                           borderRadius: 1,
+                           backgroundColor: isDarkMode ? '#1E2B45' : '#f9f9f9'
+                         }}>
+                           <Typography variant="body2" sx={{ 
+                             color: isDarkMode ? '#F0F0F0' : '#333',
+                             fontSize: '0.9rem',
+                             mb: 0.5
+                           }}>
+                             <strong>Période {index + 1}:</strong> {detail.start_date} - {detail.end_date}
+                           </Typography>
+                           <Typography variant="body2" sx={{ 
+                             color: isDarkMode ? '#888' : '#666',
+                             fontSize: '0.8rem',
+                             fontStyle: 'italic'
+                           }}>
+                             Durée: {detail.duration}
+                           </Typography>
+                           <Typography variant="body2" sx={{ 
+                             color: isDarkMode ? '#888' : '#666',
+                             fontSize: '0.8rem',
+                             fontStyle: 'italic'
+                           }}>
+                             Ligne: {detail.line}
+                           </Typography>
+                         </Box>
+                       ))}
+                     </Box>
+                   )}
+                   
+                   {/* Total */}
+                   <Box sx={{ 
+                     p: 1.5, 
+                     backgroundColor: isDarkMode ? '#404B60' : '#e3f2fd', 
+                     borderRadius: 1,
+                     border: `2px solid ${isDarkMode ? '#1976d2' : '#1976d2'}`
+                   }}>
+                     <Typography variant="body1" sx={{ 
+                       fontWeight: 'bold',
+                       color: isDarkMode ? '#F0F0F0' : '#1976d2',
+                       textAlign: 'center'
+                     }}>
+                       Total: {result.duree_experience}
+                     </Typography>
+                   </Box>
+                 </Paper>
+               </Grid>
               {/* Offres correspondantes */}
               <Grid item xs={12}>
                 <Paper sx={{ p: 2, background: isDarkMode ? '#2A354D' : '#fff' }}>
@@ -298,55 +401,115 @@ const CvAnalyse = ({ collapsed }) => {
                   </Typography>
                   {result.matches && result.matches.length > 0 ? (
                     <>
-                      <TableContainer component={Paper} sx={{ mt: 2, background: isDarkMode ? '#22304a' : '#fff' }}>
-                        <Table size="small">
+                      <TableContainer component={Paper} sx={{ background: isDarkMode ? '#2A354D' : '#FFFFFF' }}>
+                        <Table>
                           <TableHead>
                             <TableRow>
-                              <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>N°</TableCell>
-                              <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Titre</TableCell>
-                              <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Société</TableCell>
-                              <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Ville</TableCell>
-                              <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Type de Contrat</TableCell>
-                              <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Salaire</TableCell>
-                              <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Score</TableCell>
+                              <TableCell sx={{
+                                backgroundColor: isDarkMode ? '#3E4A5B' : '#F4F6F8',
+                                color: isDarkMode ? '#FFFFFF' : '#000000',
+                                fontWeight: 'bold',
+                              }}>N°</TableCell>
+                              <TableCell sx={{
+                                backgroundColor: isDarkMode ? '#3E4A5B' : '#F4F6F8',
+                                color: isDarkMode ? '#FFFFFF' : '#000000',
+                                fontWeight: 'bold',
+                              }}>Titre</TableCell>
+                              <TableCell sx={{
+                                backgroundColor: isDarkMode ? '#3E4A5B' : '#F4F6F8',
+                                color: isDarkMode ? '#FFFFFF' : '#000000',
+                                fontWeight: 'bold',
+                              }}>Société</TableCell>
+                              <TableCell sx={{
+                                backgroundColor: isDarkMode ? '#3E4A5B' : '#F4F6F8',
+                                color: isDarkMode ? '#FFFFFF' : '#000000',
+                                fontWeight: 'bold',
+                              }}>Ville</TableCell>
+                              
+                              <TableCell sx={{
+                                backgroundColor: isDarkMode ? '#3E4A5B' : '#F4F6F8',
+                                color: isDarkMode ? '#FFFFFF' : '#000000',
+                                fontWeight: 'bold',
+                              }}>Salaire</TableCell>
+                                                             <TableCell sx={{
+                                 backgroundColor: isDarkMode ? '#3E4A5B' : '#F4F6F8',
+                                 color: isDarkMode ? '#FFFFFF' : '#000000',
+                                 fontWeight: 'bold',
+                               }}>Compétences communes</TableCell>
+                               <TableCell sx={{
+                                 backgroundColor: isDarkMode ? '#3E4A5B' : '#F4F6F8',
+                                 color: isDarkMode ? '#FFFFFF' : '#000000',
+                                 fontWeight: 'bold',
+                               }}>Score</TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {currentOffers.map((m, i) => {
-                              const offre = m.offre;
-                              // Formater le salaire
-                              const minSalaire = offre.minSalaire || 0;
-                              const maxSalaire = offre.maxSalaire || 0;
-                              const devise = offre.deviseSalaire || '';
-                              const salaire = minSalaire && maxSalaire ? `${minSalaire} - ${maxSalaire} ${devise}` : 'Non spécifié';
-                              
-                              // Formater le score en pourcentage
-                              const scorePercentage = Math.round(m.global_score * 100);
-                              
-                              return (
-                                <TableRow key={i} sx={{ 
-                                  '&:hover': { 
-                                    backgroundColor: isDarkMode ? '#2A354D' : '#f5f5f5' 
-                                  } 
-                                }}>
-                                  <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>
-                                    {indexOfFirstOffer + i + 1}
-                                  </TableCell>
-                                  <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>{offre.titre}</TableCell>
-                                  <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{offre.societe}</TableCell>
-                                  <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{offre.lieuSociete || offre.ville}</TableCell>
-                                  <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{offre.typeContrat}</TableCell>
-                                  <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{salaire}</TableCell>
-                                  <TableCell sx={{ 
-                                    color: scorePercentage >= 80 ? '#4caf50' : 
-                                           scorePercentage >= 60 ? '#ff9800' : '#f44336',
-                                    fontWeight: 'bold'
-                                  }}>
-                                    {scorePercentage}%
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
+                                                         {currentOffers.map((m, i) => {
+                               const offre = m.offre;
+                               // Formater le salaire
+                               const minSalaire = offre.minSalaire || 0;
+                               const maxSalaire = offre.maxSalaire || 0;
+                               const devise = offre.deviseSalaire || '';
+                               const salaire = minSalaire && maxSalaire ? `${minSalaire} - ${maxSalaire} ${devise}` : 'Non spécifié';
+                               
+                               // Formater le score en pourcentage
+                               const scorePercentage = Math.round(m.global_score * 100);
+                               
+                                                               // Utiliser les compétences communes déjà calculées par le backend
+                                const competencesCommunes = m.matching_skills || [];
+                                
+                                // Debug: afficher les informations pour vérification
+                                console.log('Compétences communes du backend:', competencesCommunes);
+                                console.log('Match object:', m);
+                               
+                               return (
+                                 <TableRow key={i} sx={{ 
+                                   '&:hover': { 
+                                     backgroundColor: isDarkMode ? '#404B60' : '#f5f5f5' 
+                                   } 
+                                 }}>
+                                   <TableCell sx={{ color: isDarkMode ? '#FFFFFF' : '#000000' }}>
+                                     {indexOfFirstOffer + i + 1}
+                                   </TableCell>
+                                   <TableCell sx={{ color: isDarkMode ? '#FFFFFF' : '#000000', fontWeight: 'bold' }}>{offre.titre}</TableCell>
+                                   <TableCell sx={{ color: isDarkMode ? '#FFFFFF' : '#000000' }}>{offre.societe}</TableCell>
+                                   <TableCell sx={{ color: isDarkMode ? '#FFFFFF' : '#000000' }}>{offre.lieuSociete || offre.ville}</TableCell>
+                                   <TableCell sx={{ color: isDarkMode ? '#FFFFFF' : '#000000' }}>{salaire}</TableCell>
+                                   <TableCell>
+                                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                       {competencesCommunes.length > 0 ? (
+                                         competencesCommunes.map((comp, idx) => (
+                                           <Paper key={idx} sx={{ 
+                                             px: 1, 
+                                             py: 0.2, 
+                                             bgcolor: '#4caf50', 
+                                             color: 'white',
+                                             fontSize: 11, 
+                                             m: 0 
+                                           }}>
+                                             {comp}
+                                           </Paper>
+                                         ))
+                                       ) : (
+                                         <Typography variant="body2" sx={{ 
+                                           color: isDarkMode ? '#888' : '#666',
+                                           fontStyle: 'italic'
+                                         }}>
+                                           Aucune compétence commune
+                                         </Typography>
+                                       )}
+                                     </Box>
+                                   </TableCell>
+                                   <TableCell sx={{ 
+                                     color: scorePercentage >= 80 ? '#4caf50' : 
+                                            scorePercentage >= 60 ? '#ff9800' : '#f44336',
+                                     fontWeight: 'bold'
+                                   }}>
+                                     {scorePercentage}%
+                                   </TableCell>
+                                 </TableRow>
+                               );
+                             })}
                           </TableBody>
                         </Table>
                       </TableContainer>
@@ -408,35 +571,71 @@ const CvAnalyse = ({ collapsed }) => {
               </Box>
             ) : (
               <>
-                <TableContainer component={Paper} sx={{ background: isDarkMode ? '#22304a' : '#fff' }}>
+                <TableContainer component={Paper} sx={{ background: isDarkMode ? '#2A354D' : '#FFFFFF' }}>
                   <Table>
                     <TableHead>
                       <TableRow>
-                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>N°</TableCell>
-                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Titre</TableCell>
-                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Société</TableCell>
-                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Ville</TableCell>
-                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Salaire</TableCell>
-                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Type</TableCell>
-                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Expérience</TableCell>
-                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Compétences</TableCell>
-                        <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>Langues</TableCell>
+                        <TableCell sx={{
+                          backgroundColor: isDarkMode ? '#3E4A5B' : '#F4F6F8',
+                          color: isDarkMode ? '#FFFFFF' : '#000000',
+                          fontWeight: 'bold',
+                        }}>N°</TableCell>
+                        <TableCell sx={{
+                          backgroundColor: isDarkMode ? '#3E4A5B' : '#F4F6F8',
+                          color: isDarkMode ? '#FFFFFF' : '#000000',
+                          fontWeight: 'bold',
+                        }}>Titre</TableCell>
+                        <TableCell sx={{
+                          backgroundColor: isDarkMode ? '#3E4A5B' : '#F4F6F8',
+                          color: isDarkMode ? '#FFFFFF' : '#000000',
+                          fontWeight: 'bold',
+                        }}>Société</TableCell>
+                        <TableCell sx={{
+                          backgroundColor: isDarkMode ? '#3E4A5B' : '#F4F6F8',
+                          color: isDarkMode ? '#FFFFFF' : '#000000',
+                          fontWeight: 'bold',
+                        }}>Ville</TableCell>
+                        <TableCell sx={{
+                          backgroundColor: isDarkMode ? '#3E4A5B' : '#F4F6F8',
+                          color: isDarkMode ? '#FFFFFF' : '#000000',
+                          fontWeight: 'bold',
+                        }}>Salaire</TableCell>
+                        <TableCell sx={{
+                          backgroundColor: isDarkMode ? '#3E4A5B' : '#F4F6F8',
+                          color: isDarkMode ? '#FFFFFF' : '#000000',
+                          fontWeight: 'bold',
+                        }}>Type</TableCell>
+                        <TableCell sx={{
+                          backgroundColor: isDarkMode ? '#3E4A5B' : '#F4F6F8',
+                          color: isDarkMode ? '#FFFFFF' : '#000000',
+                          fontWeight: 'bold',
+                        }}>Expérience</TableCell>
+                        <TableCell sx={{
+                          backgroundColor: isDarkMode ? '#3E4A5B' : '#F4F6F8',
+                          color: isDarkMode ? '#FFFFFF' : '#000000',
+                          fontWeight: 'bold',
+                        }}>Compétences</TableCell>
+                        <TableCell sx={{
+                          backgroundColor: isDarkMode ? '#3E4A5B' : '#F4F6F8',
+                          color: isDarkMode ? '#FFFFFF' : '#000000',
+                          fontWeight: 'bold',
+                        }}>Langues</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {currentAllOffers.map((offer, index) => (
                         <TableRow key={offer.id || index} sx={{ 
                           '&:hover': { 
-                            backgroundColor: isDarkMode ? '#2A354D' : '#f5f5f5' 
+                            backgroundColor: isDarkMode ? '#404B60' : '#f5f5f5' 
                           } 
                         }}>
-                          <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{indexOfFirstAllOffer + index + 1}</TableCell>
-                          <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333', fontWeight: 'bold' }}>{offer.titre}</TableCell>
-                          <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{offer.societe}</TableCell>
-                          <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{offer.ville}</TableCell>
-                          <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{offer.salaire}</TableCell>
-                          <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{offer.typeContrat}</TableCell>
-                          <TableCell sx={{ color: isDarkMode ? '#F0F0F0' : '#333' }}>{offer.experience}</TableCell>
+                          <TableCell sx={{ color: isDarkMode ? '#FFFFFF' : '#000000' }}>{indexOfFirstAllOffer + index + 1}</TableCell>
+                          <TableCell sx={{ color: isDarkMode ? '#FFFFFF' : '#000000', fontWeight: 'bold' }}>{offer.titre}</TableCell>
+                          <TableCell sx={{ color: isDarkMode ? '#FFFFFF' : '#000000' }}>{offer.societe}</TableCell>
+                          <TableCell sx={{ color: isDarkMode ? '#FFFFFF' : '#000000' }}>{offer.ville}</TableCell>
+                          <TableCell sx={{ color: isDarkMode ? '#FFFFFF' : '#000000' }}>{offer.salaire}</TableCell>
+                          <TableCell sx={{ color: isDarkMode ? '#FFFFFF' : '#000000' }}>{offer.typeContrat}</TableCell>
+                          <TableCell sx={{ color: isDarkMode ? '#FFFFFF' : '#000000' }}>{offer.experience}</TableCell>
                           <TableCell>
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                               {offer.competences && offer.competences.map((comp, idx) => (
