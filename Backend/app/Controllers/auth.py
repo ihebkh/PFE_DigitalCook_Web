@@ -181,7 +181,7 @@ def get_all_users():
     _, users_col, _, _, privileges_col = get_mongo_collections()
     users_list = []
     for user_doc in users_col.find():
-        privilege_label = "N/A"
+        privilege_info = {"id": None, "label": "N/A"}
         privilege_id = user_doc.get("privilege")
         if privilege_id:
             if not isinstance(privilege_id, ObjectId):
@@ -192,14 +192,17 @@ def get_all_users():
             if privilege_id:
                 privilege_doc = privileges_col.find_one({"_id": privilege_id})
                 if privilege_doc:
-                    privilege_label = privilege_doc.get("label", "N/A")
+                    privilege_info = {
+                        "id": str(privilege_doc["_id"]),
+                        "label": privilege_doc.get("label", "N/A")
+                    }
         users_list.append({
             "id": str(user_doc["_id"]),
             "name": user_doc.get("name"),
             "last_name": user_doc.get("last_name"),
             "email": user_doc.get("email"),
             "photo_url": user_doc.get("photo_url"),
-            "privilege": privilege_label
+            "privilege": privilege_info
         })
     return users_list
 

@@ -37,8 +37,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 nlp = spacy.load('en_core_web_lg')
 gc = geonamescache.GeonamesCache()
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-SKILL_DB_PATH = r"C:\Users\khmir\Desktop\PFE\PFE_Web_DigitalCook\Backend\skill_db_relax_20.json"
-
+SKILL_DB_PATH = r"C:\Users\khmir\Desktop\PFE_Web_DigitalCook\Backend\skill_db_relax_20.json"
 TOKEN_DIST_PATH = r"C:\Users\Khmiri iheb\Desktop\PFE_Web_DigitalCook\Backend\app\file\token_dist.json"
 with open(SKILL_DB_PATH, 'r', encoding='utf-8') as f:
     SKILL_DB = json.load(f)
@@ -400,9 +399,9 @@ def get_all_offres():
 
 @router.post("/analyse-cv")
 def analyse_cv(file: UploadFile = File(...)):
-    EXCEL_PATH1 = r"C:\Users\Khmiri iheb\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset_experiences.xlsx"
-    EXCEL_PATH2 = r"C:\Users\Khmiri iheb\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset_final.xlsx"
-    EXCEL_PATH3 = r"C:\Users\Khmiri iheb\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset.xlsx"
+    EXCEL_PATH1 = r"C:\Users\Khmiri\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset_experiences.xlsx"
+    EXCEL_PATH2 = r"C:\Users\Khmiri\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset_final.xlsx"
+    EXCEL_PATH3 = r"C:\Users\Khmiri\Desktop\PFE_Web_DigitalCook\Backend\app\file\dataset.xlsx"
     MODEL_PATH = 'random_forest_model.pkl'
     PREPROCESSOR_PATH = 'preprocessor.pkl'
     

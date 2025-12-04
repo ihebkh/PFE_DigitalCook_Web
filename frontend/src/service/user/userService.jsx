@@ -69,23 +69,4 @@ export async function updateUser(userId, data) {
   return res.data;
 }
 
-/**
- * Supprime un utilisateur (par ID).
- */
-export async function deleteUser(userId) {
-  const res = await axios.delete(`${api_url}/users/${userId}`, { withCredentials: true });
-  return res.data;
-}
 
-/**
- * Active/désactive un utilisateur.
- */
-export async function toggleUserStatus(user) {
-  const isEnabled = user.status === 'enabled' || user.enabled === true;
-  const res = await axios.put(`${api_url}/users/${user.id}`, {
-    ...user,
-    status: isEnabled ? 'disabled' : 'enabled',
-    enabled: !isEnabled
-  }, { withCredentials: true });
-  return res.data;
-} 
