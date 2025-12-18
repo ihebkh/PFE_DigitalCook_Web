@@ -1,4 +1,4 @@
-# DigitalCook
+# PFE-DigitalCook-WEB
 
 DigitalCook is an AI-powered Web application designed to assist with cooking and recipe management. It features a modern React frontend and a robust FastAPI backend integrated with advanced AI capabilities.
 
